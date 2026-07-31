@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1140" viewBox="0 0 800 1140">
+  <rect width="800" height="1140" fill="#f3f1ea"/>
+  <rect x="40" y="40" width="720" height="1060" fill="#ffffff" stroke="#d8d4c8" stroke-width="4"/>
+  <rect x="90" y="110" width="620" height="360" fill="#e6e2d6"/>
+  <rect x="90" y="520" width="620" height="24" fill="#e0dccf"/>
+  <rect x="90" y="570" width="500" height="24" fill="#e0dccf"/>
+  <rect x="90" y="620" width="560" height="24" fill="#e0dccf"/>
+  <rect x="90" y="700" width="300" height="300" fill="#e6e2d6"/>
+  <rect x="420" y="700" width="290" height="300" fill="#eceadf"/>
+  <text x="400" y="300" fill="#9a9484" font-family="Helvetica, Arial, sans-serif" font-size="34" text-anchor="middle">Manga page placeholder</text>
+</svg>
