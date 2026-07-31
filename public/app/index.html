@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AniVerse Library — Anime, Manga, Bible, Novels, Music</title>
+<meta name="description" content="AniVerse Library is a lightweight personal media library for anime, manga, Bible, novels and music, built to run on old iPads (iOS 9.3.5 Safari) and modern browsers.">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta property="og:title" content="AniVerse Library">
+<meta property="og:description" content="Anime • Manga • Bible • Novels • Music — one lightweight personal library.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/app/style.css">
+<link rel="icon" href="/favicon.ico" type="image/x-icon">
+</head>
+<body>
+<div id="app">
+  <div id="sidebar">
+    <div class="brand">
+      <span class="logo">AV</span>
+      <span class="brandtext">
+        <strong>AniVerse Library</strong>
+        <em>Anime &bull; Manga &bull; Bible &bull; Novels &bull; Music</em>
+      </span>
+      <a href="#" id="navtoggle" class="navtoggle">Menu</a>
+    </div>
+    <ul id="nav">
+      <li><a href="#/home" data-key="home">Home</a></li>
+      <li><a href="#/anime" data-key="anime">Anime</a></li>
+      <li><a href="#/manga" data-key="manga">Manga</a></li>
+      <li><a href="#/bible" data-key="bible">Bible</a></li>
+      <li><a href="#/novels" data-key="novels">Novels</a></li>
+      <li><a href="#/music" data-key="music">Music</a></li>
+      <li><a href="#/favorites" data-key="favorites">Favorites</a></li>
+      <li><a href="#/history" data-key="history">History</a></li>
+      <li><a href="#/search" data-key="search">Search</a></li>
+      <li><a href="#/settings" data-key="settings">Settings</a></li>
+      <li><a href="#/admin" data-key="admin">Admin</a></li>
+    </ul>
+  </div>
+  <div id="main">
+    <div id="view"><p class="muted">Loading library&hellip;</p></div>
+    <div class="foot">AniVerse Library &mdash; framework only. Add your own legally owned or public-domain media URLs in Admin.</div>
+  </div>
+</div>
+
+<div id="player" class="hidden">
+  <div class="pl-art"><img id="pl-img" src="/app/img/cover.svg" alt="Album artwork"></div>
+  <div class="pl-meta">
+    <div id="pl-title" class="pl-title">Nothing playing</div>
+    <div id="pl-sub" class="pl-sub">&mdash;</div>
+  </div>
+  <div class="pl-controls">
+    <button type="button" id="pl-prev" class="pbtn" title="Previous">&#9664;&#9664;</button>
+    <button type="button" id="pl-play" class="pbtn big" title="Play">&#9654;</button>
+    <button type="button" id="pl-next" class="pbtn" title="Next">&#9654;&#9654;</button>
+  </div>
+  <div class="pl-seek">
+    <span id="pl-cur" class="tiny">0:00</span>
+    <input type="range" id="pl-range" min="0" max="1000" value="0">
+    <span id="pl-dur" class="tiny">0:00</span>
+  </div>
+  <div class="pl-extra">
+    <button type="button" id="pl-shuffle" class="pbtn sm" title="Shuffle">Shuffle</button>
+    <button type="button" id="pl-repeat" class="pbtn sm" title="Repeat">Repeat</button>
+    <input type="range" id="pl-vol" min="0" max="100" value="100" title="Volume">
+    <button type="button" id="pl-close" class="pbtn sm" title="Hide player">&times;</button>
+  </div>
+  <audio id="audio" preload="none"></audio>
+</div>
+
+<script src="/app/data.js"></script>
+<script src="/app/app.js"></script>
+</body>
+</html>

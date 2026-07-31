@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400">
+  <rect width="300" height="400" fill="#161c26"/>
+  <rect x="0" y="0" width="300" height="6" fill="#ff5a3c"/>
+  <circle cx="150" cy="170" r="52" fill="none" stroke="#2c3646" stroke-width="8"/>
+  <path d="M132 142 L188 170 L132 198 Z" fill="#ff5a3c"/>
+  <text x="150" y="300" fill="#5c6577" font-family="Helvetica, Arial, sans-serif" font-size="20" text-anchor="middle">AniVerse</text>
+</svg>
