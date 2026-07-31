@@ -12,10 +12,10 @@ export const Route = createFileRoute("/")({
         content:
           "A lightweight personal media library for anime, manga, Bible, novels and music — built to run on iPad iOS 9.3.5 Safari and modern browsers.",
       },
-      { property: "og:title", content: "AniVerse Library" },
+      { property: "og:title", content: "AniVerse Library — Anime, Manga, Bible, Novels, Music" },
       {
         property: "og:description",
-        content: "Anime • Manga • Bible • Novels • Music — one lightweight personal library.",
+        content: "A lightweight personal media library for anime, manga, Bible, novels and music — built to run on iPad iOS 9.3.5 Safari and modern browsers.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
