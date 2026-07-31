@@ -1,24 +1,49 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect } from "react";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
+const APP_URL = "/app/index.html#/home";
+
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "AniVerse Library — Anime, Manga, Bible, Novels, Music" },
+      {
+        name: "description",
+        content:
+          "A lightweight personal media library for anime, manga, Bible, novels and music — built to run on iPad iOS 9.3.5 Safari and modern browsers.",
+      },
+      { property: "og:title", content: "AniVerse Library" },
+      {
+        property: "og:description",
+        content: "Anime • Manga • Bible • Novels • Music — one lightweight personal library.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
+  useEffect(() => {
+    window.location.replace(APP_URL);
+  }, []);
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="max-w-md text-center">
+        <h1 className="text-2xl font-semibold text-foreground">AniVerse Library</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Anime • Manga • Bible • Novels • Music</p>
+        <p className="mt-6">
+          <a className="underline" href={APP_URL}>
+            Open the library
+          </a>
+        </p>
+        {/* Legacy-Safari fallback: no JS needed to reach the app. */}
+        <noscript>
+          <meta httpEquiv="refresh" content={`0;url=${APP_URL}`} />
+        </noscript>
+      </div>
     </div>
   );
 }
