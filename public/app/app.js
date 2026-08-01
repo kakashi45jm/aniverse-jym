@@ -127,6 +127,24 @@
     qIndex = start || 0;
     playCurrent();
   }
+  var wantPlaying = false;
+
+  function setMediaSession(s) {
+    if (!window.navigator || !navigator.mediaSession || !window.MediaMetadata) { return; }
+    try {
+      navigator.mediaSession.metadata = new window.MediaMetadata({
+        title: s.title,
+        artist: artistName(s.artistId),
+        album: albumTitle(s.albumId),
+        artwork: [{ src: albumCover(s.albumId), sizes: "512x512", type: "image/jpeg" }]
+      });
+      navigator.mediaSession.setActionHandler("play", function () { wantPlaying = true; audio.play(); });
+      navigator.mediaSession.setActionHandler("pause", function () { wantPlaying = false; audio.pause(); });
+      navigator.mediaSession.setActionHandler("previoustrack", function () { prevTrack(); });
+      navigator.mediaSession.setActionHandler("nexttrack", function () { nextTrack(false); });
+    } catch (e) { /* ignore */ }
+  }
+
   function playCurrent() {
     var s = songById(queue[qIndex]);
     if (!s) { return; }
@@ -136,13 +154,16 @@
     $("pl-img").src = albumCover(s.albumId);
     audio.src = s.url;
     audio.volume = db.settings.volume / 100;
+    wantPlaying = true;
     try { audio.play(); } catch (e) { /* ignore */ }
     $("pl-play").innerHTML = "&#10074;&#10074;";
+    setMediaSession(s);
     db.settings.lastSong = s.id;
     save();
     addHistory("song", s.id, s.title, artistName(s.artistId), "#/music");
     setProgress("music", "last", { songId: s.id, ts: (new Date()).getTime() });
   }
+
   function nextTrack(auto) {
     if (!queue.length) { return; }
     if (repeat && auto) { audio.currentTime = 0; audio.play(); return; }
@@ -163,14 +184,15 @@
 
   bindClick("pl-play", function () {
     if (!audio.src) { return; }
-    if (audio.paused) { audio.play(); $("pl-play").innerHTML = "&#10074;&#10074;"; }
-    else { audio.pause(); $("pl-play").innerHTML = "&#9654;"; }
+    if (audio.paused) { wantPlaying = true; audio.play(); $("pl-play").innerHTML = "&#10074;&#10074;"; }
+    else { wantPlaying = false; audio.pause(); $("pl-play").innerHTML = "&#9654;"; }
   });
   bindClick("pl-next", function () { nextTrack(false); });
   bindClick("pl-prev", prevTrack);
   bindClick("pl-shuffle", function () { shuffle = !shuffle; this.className = shuffle ? "pbtn sm on" : "pbtn sm"; });
   bindClick("pl-repeat", function () { repeat = !repeat; this.className = repeat ? "pbtn sm on" : "pbtn sm"; });
-  bindClick("pl-close", function () { audio.pause(); $("player").className = "hidden"; });
+  bindClick("pl-close", function () { wantPlaying = false; audio.pause(); $("player").className = "hidden"; });
+
   on(audio, "timeupdate", function () {
     if (seeking || !audio.duration) { return; }
     $("pl-range").value = Math.floor(audio.currentTime / audio.duration * 1000);
@@ -179,8 +201,11 @@
   });
   on(audio, "ended", function () { nextTrack(true); });
   on(audio, "error", function () {
-    $("pl-sub").innerHTML = "Could not load this audio file. Check the URL in Admin.";
+    wantPlaying = false;
+    $("pl-play").innerHTML = "&#9654;";
+    $("pl-sub").innerHTML = "Could not load this audio file. Check the URL in Admin (MP3 or AAC/M4A).";
   });
+
   on($("pl-range"), "mousedown", function () { seeking = true; });
   on($("pl-range"), "touchstart", function () { seeking = true; });
   function doSeek() {
@@ -195,6 +220,23 @@
     audio.volume = db.settings.volume / 100;
   });
   $("pl-vol").value = db.settings.volume;
+
+  /* keep playing while the tab is in the background / another app is in front */
+  function resumeIfWanted() {
+    if (wantPlaying && audio.src && audio.paused) {
+      try { audio.play(); } catch (e) { /* ignore */ }
+    }
+  }
+  on(audio, "pause", function () {
+    if (!wantPlaying) { $("pl-play").innerHTML = "&#9654;"; return; }
+    // browser throttled us, not the user: try to pick playback back up
+    setTimeout(resumeIfWanted, 300);
+  });
+  on(audio, "play", function () { $("pl-play").innerHTML = "&#10074;&#10074;"; });
+  on(document, "visibilitychange", resumeIfWanted);
+  on(window, "focus", resumeIfWanted);
+  on(window, "pageshow", resumeIfWanted);
+
 
   /* ---------------- rendering pieces ---------------- */
   function card(href, cover, title, sub, wide) {
