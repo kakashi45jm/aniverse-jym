@@ -920,7 +920,7 @@
         field("an_genres", "Genres (comma separated)", "Action, Fantasy") +
         field("an_year", "Year", "2024") + field("an_status", "Status", "Ongoing") +
         area("an_desc", "Description") +
-        area("an_eps", "Episode video URLs (one per line, MP4/H.264)", "/media/anime/example/episode-01.mp4") +
+        area("an_eps", "Episode video or embed links (one per line \u2014 MP4 file, or a YouTube/Vimeo/site link that plays in-app)", "/media/anime/example/episode-01.mp4") +
         '<button type="button" class="btn primary" id="an_save">Save anime</button></div>' +
         listPanel("anime", all("anime"), function (x) { return x.title + " (" + x.episodes.length + " episodes)"; });
     } else if (adminTab === "manga") {
