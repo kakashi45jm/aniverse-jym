@@ -201,8 +201,11 @@
   });
   on(audio, "ended", function () { nextTrack(true); });
   on(audio, "error", function () {
-    $("pl-sub").innerHTML = "Could not load this audio file. Check the URL in Admin.";
+    wantPlaying = false;
+    $("pl-play").innerHTML = "&#9654;";
+    $("pl-sub").innerHTML = "Could not load this audio file. Check the URL in Admin (MP3 or AAC/M4A).";
   });
+
   on($("pl-range"), "mousedown", function () { seeking = true; });
   on($("pl-range"), "touchstart", function () { seeking = true; });
   function doSeek() {
