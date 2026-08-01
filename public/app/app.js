@@ -351,8 +351,25 @@
     addHistory("anime", a.id, a.title, "Viewed details", "#/anime/" + a.id);
   };
 
+  function isDirectVideo(u) {
+    u = String(u || "").split("?")[0].toLowerCase();
+    return /\.(mp4|m4v|mov|webm|ogv|m3u8)$/.test(u);
+  }
+
+  function embedUrl(u) {
+    u = String(u || "");
+    var m;
+    m = u.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{6,})/);
+    if (m) { return "https://www.youtube.com/embed/" + m[1]; }
+    m = u.match(/vimeo\.com\/(\d+)/);
+    if (m) { return "https://player.vimeo.com/video/" + m[1]; }
+    m = u.match(/dailymotion\.com\/video\/([A-Za-z0-9]+)/);
+    if (m) { return "https://www.dailymotion.com/embed/video/" + m[1]; }
+    return u;
+  }
+
   V.watch = function (id, epNum) {
-    var a = byId("anime", id), i, ep = null, nav = "";
+    var a = byId("anime", id), i, ep = null, nav = "", player;
     if (!a) { return notFound(); }
     epNum = parseInt(epNum, 10) || 1;
     for (i = 0; i < a.episodes.length; i++) { if (a.episodes[i].number === epNum) { ep = a.episodes[i]; } }
@@ -360,35 +377,52 @@
     if (epNum > 1) { nav += '<a class="btn" href="#/watch/' + a.id + "/" + (epNum - 1) + '">&#9664; Previous</a>'; }
     if (epNum < a.episodes.length) { nav += '<a class="btn" href="#/watch/' + a.id + "/" + (epNum + 1) + '">Next &#9654;</a>'; }
 
+    var direct = isDirectVideo(ep.video);
+    if (direct) {
+      player =
+        '<video id="vid" controls preload="metadata" playsinline webkit-playsinline poster="' + esc(a.cover) + '">' +
+        '<source src="' + esc(ep.video) + '" type="video/mp4">' +
+        "Your browser cannot play this video." +
+        "</video>" +
+        '<p id="vidmsg" class="muted tiny">MP4 / H.264 / AAC recommended for iOS 9 playback.</p>';
+    } else {
+      player =
+        '<div class="embedbox"><iframe id="vidframe" src="' + esc(embedUrl(ep.video)) +
+        '" frameborder="0" scrolling="no" allowfullscreen webkitallowfullscreen mozallowfullscreen allow="autoplay; fullscreen; encrypted-media"></iframe></div>' +
+        '<p id="vidmsg" class="muted tiny">Playing inside AniVerse. If a source blocks embedding, ' +
+        '<a href="' + esc(ep.video) + '" target="_blank" rel="noopener">open it in a new tab</a>.</p>';
+    }
+
     render(pageWrap(a.title, "Episode " + epNum + " \u2014 " + ep.title,
-      '<div class="panel"><video id="vid" controls preload="metadata" playsinline webkit-playsinline poster="' + esc(a.cover) + '">' +
-      '<source src="' + esc(ep.video) + '" type="video/mp4">' +
-      "Your browser cannot play this video." +
-      "</video>" +
-      '<p id="vidmsg" class="muted tiny">MP4 / H.264 / AAC recommended for iOS 9 playback.</p>' +
+      '<div class="panel">' + player +
       '<div class="bar">' + nav +
       '<a class="btn" href="#/anime/' + a.id + '">All episodes</a>' +
       favBtn("anime", a.id, a.title, "#/anime/" + a.id) + "</div></div>"));
     wireFavs();
 
-    var v = $("vid");
-    on(v, "error", function () { $("vidmsg").innerHTML = "This video could not be loaded. Check the video URL in Admin, and make sure it is MP4 (H.264 + AAC)."; });
-    on(v, "loadedmetadata", function () {
-      var p = getProgress("anime", a.id);
-      if (p && p.ep === epNum && p.pos > 5 && p.pos < v.duration - 10) {
-        try { v.currentTime = p.pos; } catch (e2) { /* ignore */ }
-      }
-    });
-    on(v, "timeupdate", function () {
-      if (!v.duration) { return; }
-      var now = (new Date()).getTime();
-      if (!v._last || now - v._last > 5000) {
-        v._last = now;
-        setProgress("anime", a.id, { ep: epNum, pos: v.currentTime, pct: v.currentTime / v.duration * 100, ts: now });
-      }
-    });
+    if (direct) {
+      var v = $("vid");
+      on(v, "error", function () { $("vidmsg").innerHTML = "This video could not be loaded. Check the video URL in Admin, and make sure it is MP4 (H.264 + AAC)."; });
+      on(v, "loadedmetadata", function () {
+        var p = getProgress("anime", a.id);
+        if (p && p.ep === epNum && p.pos > 5 && p.pos < v.duration - 10) {
+          try { v.currentTime = p.pos; } catch (e2) { /* ignore */ }
+        }
+      });
+      on(v, "timeupdate", function () {
+        if (!v.duration) { return; }
+        var now = (new Date()).getTime();
+        if (!v._last || now - v._last > 5000) {
+          v._last = now;
+          setProgress("anime", a.id, { ep: epNum, pos: v.currentTime, pct: v.currentTime / v.duration * 100, ts: now });
+        }
+      });
+    } else {
+      setProgress("anime", a.id, { ep: epNum, pos: 0, pct: 0, ts: (new Date()).getTime() });
+    }
     addHistory("anime", a.id, a.title, "Episode " + epNum, "#/watch/" + a.id + "/" + epNum);
   };
+
 
   V.manga = function () {
     var list = all("manga"), h = "", i;
@@ -886,7 +920,7 @@
         field("an_genres", "Genres (comma separated)", "Action, Fantasy") +
         field("an_year", "Year", "2024") + field("an_status", "Status", "Ongoing") +
         area("an_desc", "Description") +
-        area("an_eps", "Episode video URLs (one per line, MP4/H.264)", "/media/anime/example/episode-01.mp4") +
+        area("an_eps", "Episode video or embed links (one per line \u2014 MP4 file, or a YouTube/Vimeo/site link that plays in-app)", "/media/anime/example/episode-01.mp4") +
         '<button type="button" class="btn primary" id="an_save">Save anime</button></div>' +
         listPanel("anime", all("anime"), function (x) { return x.title + " (" + x.episodes.length + " episodes)"; });
     } else if (adminTab === "manga") {
