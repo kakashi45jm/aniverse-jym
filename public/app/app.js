@@ -184,14 +184,15 @@
 
   bindClick("pl-play", function () {
     if (!audio.src) { return; }
-    if (audio.paused) { audio.play(); $("pl-play").innerHTML = "&#10074;&#10074;"; }
-    else { audio.pause(); $("pl-play").innerHTML = "&#9654;"; }
+    if (audio.paused) { wantPlaying = true; audio.play(); $("pl-play").innerHTML = "&#10074;&#10074;"; }
+    else { wantPlaying = false; audio.pause(); $("pl-play").innerHTML = "&#9654;"; }
   });
   bindClick("pl-next", function () { nextTrack(false); });
   bindClick("pl-prev", prevTrack);
   bindClick("pl-shuffle", function () { shuffle = !shuffle; this.className = shuffle ? "pbtn sm on" : "pbtn sm"; });
   bindClick("pl-repeat", function () { repeat = !repeat; this.className = repeat ? "pbtn sm on" : "pbtn sm"; });
-  bindClick("pl-close", function () { audio.pause(); $("player").className = "hidden"; });
+  bindClick("pl-close", function () { wantPlaying = false; audio.pause(); $("player").className = "hidden"; });
+
   on(audio, "timeupdate", function () {
     if (seeking || !audio.duration) { return; }
     $("pl-range").value = Math.floor(audio.currentTime / audio.duration * 1000);
