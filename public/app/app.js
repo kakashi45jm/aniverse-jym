@@ -218,6 +218,23 @@
   });
   $("pl-vol").value = db.settings.volume;
 
+  /* keep playing while the tab is in the background / another app is in front */
+  function resumeIfWanted() {
+    if (wantPlaying && audio.src && audio.paused) {
+      try { audio.play(); } catch (e) { /* ignore */ }
+    }
+  }
+  on(audio, "pause", function () {
+    if (!wantPlaying) { $("pl-play").innerHTML = "&#9654;"; return; }
+    // browser throttled us, not the user: try to pick playback back up
+    setTimeout(resumeIfWanted, 300);
+  });
+  on(audio, "play", function () { $("pl-play").innerHTML = "&#10074;&#10074;"; });
+  on(document, "visibilitychange", resumeIfWanted);
+  on(window, "focus", resumeIfWanted);
+  on(window, "pageshow", resumeIfWanted);
+
+
   /* ---------------- rendering pieces ---------------- */
   function card(href, cover, title, sub, wide) {
     return '<div class="card' + (wide ? " wide" : "") + '"><a href="' + href + '">' +
