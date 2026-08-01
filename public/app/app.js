@@ -127,6 +127,24 @@
     qIndex = start || 0;
     playCurrent();
   }
+  var wantPlaying = false;
+
+  function setMediaSession(s) {
+    if (!window.navigator || !navigator.mediaSession || !window.MediaMetadata) { return; }
+    try {
+      navigator.mediaSession.metadata = new window.MediaMetadata({
+        title: s.title,
+        artist: artistName(s.artistId),
+        album: albumTitle(s.albumId),
+        artwork: [{ src: albumCover(s.albumId), sizes: "512x512", type: "image/jpeg" }]
+      });
+      navigator.mediaSession.setActionHandler("play", function () { wantPlaying = true; audio.play(); });
+      navigator.mediaSession.setActionHandler("pause", function () { wantPlaying = false; audio.pause(); });
+      navigator.mediaSession.setActionHandler("previoustrack", function () { prevTrack(); });
+      navigator.mediaSession.setActionHandler("nexttrack", function () { nextTrack(false); });
+    } catch (e) { /* ignore */ }
+  }
+
   function playCurrent() {
     var s = songById(queue[qIndex]);
     if (!s) { return; }
@@ -136,13 +154,16 @@
     $("pl-img").src = albumCover(s.albumId);
     audio.src = s.url;
     audio.volume = db.settings.volume / 100;
+    wantPlaying = true;
     try { audio.play(); } catch (e) { /* ignore */ }
     $("pl-play").innerHTML = "&#10074;&#10074;";
+    setMediaSession(s);
     db.settings.lastSong = s.id;
     save();
     addHistory("song", s.id, s.title, artistName(s.artistId), "#/music");
     setProgress("music", "last", { songId: s.id, ts: (new Date()).getTime() });
   }
+
   function nextTrack(auto) {
     if (!queue.length) { return; }
     if (repeat && auto) { audio.currentTime = 0; audio.play(); return; }
