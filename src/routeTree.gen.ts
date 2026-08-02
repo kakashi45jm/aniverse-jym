@@ -10,33 +10,76 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicBibleRouteImport } from './routes/api/public/bible'
+import { Route as ApiPublicLibraryRouteImport } from './routes/api/public/library'
+import { Route as ApiPublicNotificationsRouteImport } from './routes/api/public/notifications'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicBibleRoute = ApiPublicBibleRouteImport.update({
+  id: '/api/public/bible',
+  path: '/api/public/bible',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicLibraryRoute = ApiPublicLibraryRouteImport.update({
+  id: '/api/public/library',
+  path: '/api/public/library',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicNotificationsRoute = ApiPublicNotificationsRouteImport.update({
+  id: '/api/public/notifications',
+  path: '/api/public/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/public/bible': typeof ApiPublicBibleRoute
+  '/api/public/library': typeof ApiPublicLibraryRoute
+  '/api/public/notifications': typeof ApiPublicNotificationsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/public/bible': typeof ApiPublicBibleRoute
+  '/api/public/library': typeof ApiPublicLibraryRoute
+  '/api/public/notifications': typeof ApiPublicNotificationsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/public/bible': typeof ApiPublicBibleRoute
+  '/api/public/library': typeof ApiPublicLibraryRoute
+  '/api/public/notifications': typeof ApiPublicNotificationsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/api/public/bible'
+    | '/api/public/library'
+    | '/api/public/notifications'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/api/public/bible'
+    | '/api/public/library'
+    | '/api/public/notifications'
+  id:
+    | '__root__'
+    | '/'
+    | '/api/public/bible'
+    | '/api/public/library'
+    | '/api/public/notifications'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiPublicBibleRoute: typeof ApiPublicBibleRoute
+  ApiPublicLibraryRoute: typeof ApiPublicLibraryRoute
+  ApiPublicNotificationsRoute: typeof ApiPublicNotificationsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,22 +91,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/bible': {
+      id: '/api/public/bible'
+      path: '/api/public/bible'
+      fullPath: '/api/public/bible'
+      preLoaderRoute: typeof ApiPublicBibleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/library': {
+      id: '/api/public/library'
+      path: '/api/public/library'
+      fullPath: '/api/public/library'
+      preLoaderRoute: typeof ApiPublicLibraryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/notifications': {
+      id: '/api/public/notifications'
+      path: '/api/public/notifications'
+      fullPath: '/api/public/notifications'
+      preLoaderRoute: typeof ApiPublicNotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiPublicBibleRoute: ApiPublicBibleRoute,
+  ApiPublicLibraryRoute: ApiPublicLibraryRoute,
+  ApiPublicNotificationsRoute: ApiPublicNotificationsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
