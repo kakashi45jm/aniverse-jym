@@ -1067,19 +1067,23 @@
     if (adminTab === "anime") {
       h = '<div class="panel"><h3>Add anime</h3>' +
         field("an_title", "Title") + field("an_cover", "Cover image URL", "/media/anime/example/cover.jpg") +
+        fileBtn("an_cover", "+ Upload cover image", "image/*") +
         field("an_genres", "Genres (comma separated)", "Action, Fantasy") +
         field("an_year", "Year", "2024") + field("an_status", "Status", "Ongoing") +
         area("an_desc", "Description") +
         area("an_eps", "Episode video or embed links (one per line \u2014 MP4 file, or a YouTube/Vimeo/site link that plays in-app)", "/media/anime/example/episode-01.mp4") +
+        fileBtn("an_eps", "+ Upload video files", "video/*", true) +
         '<button type="button" class="btn primary" id="an_save">Save anime</button></div>' +
         listPanel("anime", all("anime"), function (x) { return x.title + " (" + x.episodes.length + " episodes)"; });
     } else if (adminTab === "manga") {
       h = '<div class="panel"><h3>Add manga</h3>' +
         field("mg_title", "Title") + field("mg_author", "Author") + field("mg_artist", "Artist") +
         field("mg_cover", "Cover image URL", "/media/manga/example/cover.jpg") +
+        fileBtn("mg_cover", "+ Upload cover image", "image/*") +
         field("mg_genres", "Genres (comma separated)") + field("mg_status", "Status", "Ongoing") +
         area("mg_desc", "Description") +
         area("mg_pages", "Chapter 1 page image URLs (one per line, JPG/PNG)", "/media/manga/example/chapter-01/page-001.jpg") +
+        fileBtn("mg_pages", "+ Upload page images", "image/*", true) +
         '<button type="button" class="btn primary" id="mg_save">Save manga</button></div>' +
         listPanel("manga", all("manga"), function (x) { return x.title + " (" + x.chapters.length + " chapters)"; });
     } else if (adminTab === "bible") {
@@ -1094,7 +1098,7 @@
     } else if (adminTab === "novels") {
       h = '<div class="panel"><h3>Add novel</h3>' +
         field("nv_title", "Title") + field("nv_author", "Author") +
-        field("nv_cover", "Cover image URL") + field("nv_genres", "Genres (comma separated)") +
+        field("nv_cover", "Cover image URL") + fileBtn("nv_cover", "+ Upload cover image", "image/*") + field("nv_genres", "Genres (comma separated)") +
         area("nv_desc", "Description") +
         area("nv_text", "Chapter 1 text") +
         '<button type="button" class="btn primary" id="nv_save">Save novel</button></div>' +
@@ -1108,6 +1112,7 @@
         '<div class="panel"><h3>Add album</h3>' + field("al_title", "Album name") +
         "<label>Artist</label><select id=\"al_artist\">" + arOpts + "</select>" +
         field("al_cover", "Album artwork URL", "/media/music/example/cover.jpg") +
+        fileBtn("al_cover", "+ Upload album art", "image/*") +
         field("al_year", "Year") +
         '<button type="button" class="btn" id="al_save">Save album</button></div>' +
         '<div class="panel"><h3>Add song</h3>' + field("sg_title", "Song title") +
@@ -1115,6 +1120,7 @@
         "<label>Album</label><select id=\"sg_album\">" + alOpts + "</select>" +
         field("sg_genre", "Genre") + field("sg_duration", "Duration", "3:30") +
         field("sg_url", "Audio URL (MP3, or AAC/M4A)", "/media/music/example-song.mp3") +
+        fileBtn("sg_url", "+ Upload audio file", "audio/*") +
         '<button type="button" class="btn primary" id="sg_save">Save song</button></div>' +
         listPanel("songs", all("songs"), function (x) { return x.title + " \u2014 " + artistName(x.artistId); });
     }
@@ -1129,6 +1135,10 @@
   }
   function area(id, label, ph) {
     return "<label>" + esc(label) + '</label><textarea id="' + id + '" placeholder="' + esc(ph || "") + '"></textarea>';
+  }
+  function fileBtn(targetId, label, accept, multi) {
+    return '<button type="button" class="btn sm filebtn" data-target="' + targetId + '" data-multi="' + (multi ? "1" : "0") + '">' + label + '</button>' +
+      '<input type="file" id="' + targetId + '_file" accept="' + (accept || "") + '"' + (multi ? ' multiple' : '') + ' style="display:none">';
   }
   function listPanel(kind, list, label) {
     var h = "", i;
@@ -1153,6 +1163,34 @@
 
   function wireAdmin() {
     bindAll("#ak_lock", function () { ADMIN_OK = false; db.settings.adminKey = ""; save(); V.admin(); });
+    bindAll(".filebtn", function () {
+      var targetId = this.getAttribute("data-target");
+      var fileInput = $(targetId + "_file");
+      if (fileInput) { fileInput.click(); }
+    });
+    var fileInputs = $("view").querySelectorAll('input[type=file]'), fi;
+    for (fi = 0; fi < fileInputs.length; fi++) {
+      on(fileInputs[fi], "change", function () {
+        var targetId = this.id.replace(/_file$/, "");
+        var target = $(targetId);
+        if (!target || !this.files || !this.files.length) { return; }
+        if (!(window.URL && window.URL.createObjectURL)) {
+          alert("Your browser does not support file upload. Please paste a URL instead.");
+          return;
+        }
+        var multi = this.getAttribute("multiple") !== null;
+        if (multi) {
+          var urls = [], fi2;
+          for (fi2 = 0; fi2 < this.files.length; fi2++) {
+            urls.push(window.URL.createObjectURL(this.files[fi2]));
+          }
+          var existing = target.value.replace(/^\s+|\s+$/g, "");
+          target.value = existing ? existing + "\n" + urls.join("\n") : urls.join("\n");
+        } else {
+          target.value = window.URL.createObjectURL(this.files[0]);
+        }
+      });
+    }
     bindAll(".adel", function () {
       var id = this.getAttribute("data-i");
       if (!window.confirm("Delete this item for everyone?")) { return; }

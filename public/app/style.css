@@ -98,6 +98,10 @@ p { margin: 0 0 10px 0; }
 .btn.on { background: #ff5a3c; border-color: #ff5a3c; color: #14181f; }
 .btn:active { opacity: 0.8; }
 
+/* File upload buttons */
+.filebtn { background: #1a3a2e; border-color: #2e5a4a; color: #4ec29a; margin-top: 2px; margin-bottom: 10px; }
+.filebtn:active { opacity: 0.7; }
+
 /* Forms */
 input[type=text], input[type=url], input[type=number], select, textarea {
   width: 100%; padding: 10px; min-height: 44px; margin-bottom: 8px;
