@@ -101,6 +101,7 @@ p { margin: 0 0 10px 0; }
 /* File upload buttons */
 .filebtn { background: #1a3a2e; border-color: #2e5a4a; color: #4ec29a; margin-top: 2px; margin-bottom: 10px; }
 .filebtn:active { opacity: 0.7; }
+.upload-status { font-size: 13px; color: #4ec29a; padding: 6px 0; min-height: 20px; }
 
 /* Forms */
 input[type=text], input[type=url], input[type=number], select, textarea {

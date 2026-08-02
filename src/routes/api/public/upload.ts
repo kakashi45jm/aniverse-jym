@@ -44,8 +44,8 @@ export const Route = createFileRoute("/api/public/upload")({
           return json({ error: "No file field in upload" }, 400);
         }
 
-        if (file.size > 50 * 1024 * 1024) {
-          return json({ error: "File too large (50MB max)" }, 400);
+        if (file.size > 100 * 1024 * 1024) {
+          return json({ error: "File too large (100MB max)" }, 400);
         }
 
         const ext = (file.name.split(".").pop() ?? "bin").toLowerCase().replace(/[^a-z0-9]/g, "");

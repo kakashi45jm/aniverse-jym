@@ -98,8 +98,19 @@
     fd.append("folder", folder || "media");
     var x;
     try { x = new XMLHttpRequest(); } catch (e) { cb(null, 0); return; }
+    if (x.upload) {
+      x.upload.onprogress = function (e) {
+        if (e.lengthComputable) {
+          var pct = Math.round((e.loaded / e.total) * 100);
+          var bar = $("upload_status");
+          if (bar) { bar.innerHTML = "Uploading " + file.name + " — " + pct + "%"; }
+        }
+      };
+    }
     x.onreadystatechange = function () {
       if (x.readyState !== 4) { return; }
+      var bar = $("upload_status");
+      if (bar) { bar.innerHTML = ""; }
       var out = null;
       try { out = JSON.parse(x.responseText); } catch (e2) { out = null; }
       cb(out, x.status);
@@ -1155,7 +1166,8 @@
     }
 
     render(pageWrap("Admin", "Uploads are saved in the cloud \u2014 everyone sees them, and every device gets a notification",
-      '<div class="bar">' + bar + '<button type="button" class="btn sm" id="ak_lock">Lock admin</button></div>' + h));
+      '<div class="bar">' + bar + '<button type="button" class="btn sm" id="ak_lock">Lock admin</button></div>' +
+      '<div id="upload_status" class="upload-status"></div>' + h));
     wireAdmin();
   };
 
