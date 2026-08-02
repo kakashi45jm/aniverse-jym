@@ -14,7 +14,81 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bible_cache: {
+        Row: {
+          book: string
+          chapter: number
+          created_at: string
+          id: string
+          verses: Json
+        }
+        Insert: {
+          book: string
+          chapter: number
+          created_at?: string
+          id?: string
+          verses: Json
+        }
+        Update: {
+          book?: string
+          chapter?: number
+          created_at?: string
+          id?: string
+          verses?: Json
+        }
+        Relationships: []
+      }
+      library_items: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          payload: Json
+          slug: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          payload?: Json
+          slug: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          payload?: Json
+          slug?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          href: string
+          id: string
+          title: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          href?: string
+          id?: string
+          title: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          href?: string
+          id?: string
+          title?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
