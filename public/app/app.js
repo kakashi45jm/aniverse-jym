@@ -33,8 +33,65 @@
   }
   db = load();
 
-  /* ---------------- data access (demo + admin additions) ---------------- */
-  function all(kind) { return AV_DATA[kind].concat(db.custom[kind] || []); }
+  /* ---------------- cloud library (shared by every device) ---------------- */
+  var CLOUD = { anime: [], manga: [], novels: [], songs: [], albums: [], artists: [] };
+  var KIND_TO_API = { anime: "anime", manga: "manga", novels: "novel", songs: "song", albums: "album", artists: "artist" };
+  var API_TO_KIND = { anime: "anime", manga: "manga", novel: "novels", song: "songs", album: "albums", artist: "artists" };
+
+  function xhrJSON(method, url, bodyObj, cb) {
+    var x;
+    try { x = new XMLHttpRequest(); } catch (e) { cb(null, 0); return; }
+    x.onreadystatechange = function () {
+      if (x.readyState !== 4) { return; }
+      var out = null;
+      try { out = JSON.parse(x.responseText); } catch (e2) { out = null; }
+      cb(out, x.status);
+    };
+    x.open(method, url, true);
+    if (bodyObj) {
+      x.setRequestHeader("Content-Type", "application/json");
+      x.send(JSON.stringify(bodyObj));
+    } else { x.send(); }
+  }
+
+  function loadCloud(cb) {
+    xhrJSON("GET", "/api/public/library?t=" + (new Date()).getTime(), null, function (res) {
+      var k, i, row, kind, item;
+      for (k in CLOUD) { if (CLOUD.hasOwnProperty(k)) { CLOUD[k] = []; } }
+      if (res && res.items) {
+        for (i = 0; i < res.items.length; i++) {
+          row = res.items[i];
+          kind = API_TO_KIND[row.kind];
+          if (!kind) { continue; }
+          item = row.payload || {};
+          item.id = row.slug;
+          if (!item.title) { item.title = row.title; }
+          CLOUD[kind].push(item);
+        }
+      }
+      if (cb) { cb(); }
+    });
+  }
+
+  function cloudSave(kind, title, payload, cb) {
+    xhrJSON("POST", "/api/public/library",
+      { key: adminKey(), kind: KIND_TO_API[kind], title: title, payload: payload },
+      function (res, st) {
+        if (st === 401) { ADMIN_OK = false; alert("Wrong admin key."); V.admin(); return; }
+        if (!res || !res.ok) { alert("Could not upload: " + ((res && res.error) || "no connection")); return; }
+        loadCloud(function () { if (cb) { cb(res.slug); } else { V.admin(); } });
+      });
+  }
+
+  function cloudDelete(slug, cb) {
+    xhrJSON("POST", "/api/public/library", { key: adminKey(), action: "delete", slug: slug },
+      function (res, st) {
+        if (st === 401) { ADMIN_OK = false; alert("Wrong admin key."); V.admin(); return; }
+        loadCloud(function () { if (cb) { cb(); } });
+      });
+  }
+
+  function all(kind) { return (CLOUD[kind] || []).concat(db.custom[kind] || []); }
   function byId(kind, id) {
     var list = all(kind), i;
     for (i = 0; i < list.length; i++) { if (list[i].id === id) { return list[i]; } }
@@ -45,11 +102,21 @@
     for (i = 0; i < b.length; i++) { if (b[i].id === id) { return b[i]; } }
     return null;
   }
+  var BIBLE_CACHE = {};
   function bibleVerses(bookId, ch) {
     var k = bookId + "|" + ch;
+    if (BIBLE_CACHE[k]) { return BIBLE_CACHE[k]; }
     if (db.custom.bible && db.custom.bible[k]) { return db.custom.bible[k]; }
-    if (AV_DATA.bibleText[k]) { return AV_DATA.bibleText[k]; }
     return null;
+  }
+  function fetchBible(bookId, ch, cb) {
+    xhrJSON("GET", "/api/public/bible?book=" + encodeURIComponent(bookId) + "&chapter=" + ch, null,
+      function (res) {
+        if (res && res.verses && res.verses.length) {
+          BIBLE_CACHE[bookId + "|" + ch] = res.verses;
+          cb(true);
+        } else { cb(false); }
+      });
   }
   function artistName(id) {
     var a = all("artists"), i;
@@ -554,7 +621,7 @@
         ' <span class="tiny">' + b[i].chapters + " chapters</span></a></li>";
       if (b[i].testament === "old") { ot += row; } else { nt += row; }
     }
-    render(pageWrap("Bible", "World English Bible (public domain) sample text \u2014 add more chapters in Admin",
+    render(pageWrap("Holy Bible", "King James Version \u2014 the complete Christian Bible, all 66 books and every verse",
       '<div class="panel"><h3>Old Testament</h3><ul class="list">' + ot + "</ul></div>" +
       '<div class="panel"><h3>New Testament</h3><ul class="list">' + nt + "</ul></div>"));
   };
@@ -586,8 +653,14 @@
           (isFav("verse", b.id + "." + ch + "." + (i + 1)) ? "\u2605" : "\u2606") + "</button></p>";
       }
     } else {
-      h = '<p class="muted">This chapter has no text loaded yet. Open <a href="#/admin">Admin &rarr; Bible</a> to paste verses for ' +
-        esc(b.name) + " " + ch + " (one verse per line). Sample text is included for Genesis 1, Psalms 23 and John 1.</p>";
+      h = '<p class="muted" id="bwait">Loading ' + esc(b.name) + " " + ch + " \u2026</p>";
+      fetchBible(b.id, ch, function (ok) {
+        if (location.hash.indexOf("#/bible/" + b.id + "/" + ch) !== 0) { return; }
+        if (ok) { V.bibleRead(b.id, ch); }
+        else if ($("bwait")) {
+          $("bwait").innerHTML = "Could not load this chapter right now. Check your connection and try again.";
+        }
+      });
     }
 
     var chapterOptions = "", j;
@@ -934,12 +1007,23 @@
       '<div class="panel"><h3>Data</h3><p class="muted tiny">Favorites, history, progress and playlists are stored in this browser only. ' +
       "No account and no server tracking are required.</p>" +
       '<button type="button" class="btn" id="wipe">Reset all local data</button></div>' +
+      '<div class="panel"><h3>Notifications</h3><p class="muted tiny">Get an alert on this phone or tablet whenever new anime, manga, novels or music are uploaded.</p>' +
+      '<button type="button" class="btn" id="nperm">Turn on notifications</button>' +
+      '<p class="tiny muted">In-app banners always work. System pop-ups need a browser that supports web notifications (Chrome, Edge, Firefox, or Safari 16+).</p></div>' +
       '<div class="panel"><h3>Compatibility</h3><p class="tiny muted">This interface is built with ES5 JavaScript, CSS3 and native HTML5 ' +
       "&lt;video&gt; / &lt;audio&gt; so it can run on Safari 9 (iPad, iOS 9.3.5) as well as current desktop and mobile browsers. " +
       "No service workers, WebGL, IndexedDB or CSS Grid are required.</p></div>"));
     bindAll("#fplus", function () { db.settings.fontSize = Math.min(34, db.settings.fontSize + 2); save(); V.settings(); });
     bindAll("#fminus", function () { db.settings.fontSize = Math.max(13, db.settings.fontSize - 2); save(); V.settings(); });
     bindAll("#tlight", function () { db.settings.readerLight = !db.settings.readerLight; save(); V.settings(); });
+    bindAll("#nperm", function () {
+      if (!window.Notification) { alert("This browser cannot show system notifications. You will still see in-app banners."); return; }
+      try {
+        Notification.requestPermission(function (p) {
+          alert(p === "granted" ? "Notifications are on." : "Notifications were not allowed.");
+        });
+      } catch (e) { alert("Could not ask for permission on this browser."); }
+    });
     bindAll("#wipe", function () {
       if (window.confirm("Delete all local favorites, history, progress and playlists?")) {
         db = defaults(); save(); V.settings();
@@ -949,8 +1033,32 @@
 
   /* ---- admin ---- */
   var adminTab = "anime";
+  var ADMIN_OK = false;
+  function adminKey() { return db.settings.adminKey || ""; }
+
+  function adminLock() {
+    render(pageWrap("Admin", "Enter the admin key to manage the library",
+      '<div class="panel"><h3>Admin key</h3>' +
+      '<label>Key</label><input type="password" id="ak_key" placeholder="Admin key">' +
+      '<button type="button" class="btn primary" id="ak_go">Unlock</button>' +
+      '<p class="tiny muted">Only the owner can upload. Everything you upload is stored in the cloud, ' +
+      "so it shows up on every phone, tablet and computer that opens this site.</p></div>"));
+    bindAll("#ak_go", function () {
+      var k = val("ak_key");
+      if (!k) { return; }
+      xhrJSON("POST", "/api/public/library", { key: k, action: "verify" }, function (res, st) {
+        if (st === 401) { alert("Wrong admin key."); return; }
+        if (!res || !res.ok) { alert("No connection to the server. Try again."); return; }
+        db.settings.adminKey = k; save();
+        ADMIN_OK = true;
+        V.admin();
+      });
+    });
+  }
+
   V.admin = function (tab) {
     if (tab) { adminTab = tab; }
+    if (!ADMIN_OK) { return adminLock(); }
     var tabs = ["anime", "manga", "bible", "novels", "music"], i, bar = "", h = "";
     for (i = 0; i < tabs.length; i++) {
       bar += '<a class="btn sm' + (tabs[i] === adminTab ? " on" : "") + '" href="#/admin/' + tabs[i] + '">' + tabs[i] + "</a>";
@@ -1011,8 +1119,8 @@
         listPanel("songs", all("songs"), function (x) { return x.title + " \u2014 " + artistName(x.artistId); });
     }
 
-    render(pageWrap("Admin", "Content management \u2014 saved locally now, ready to move to a backend later",
-      '<div class="bar">' + bar + "</div>" + h));
+    render(pageWrap("Admin", "Uploads are saved in the cloud \u2014 everyone sees them, and every device gets a notification",
+      '<div class="bar">' + bar + '<button type="button" class="btn sm" id="ak_lock">Lock admin</button></div>' + h));
     wireAdmin();
   };
 
@@ -1023,19 +1131,13 @@
     return "<label>" + esc(label) + '</label><textarea id="' + id + '" placeholder="' + esc(ph || "") + '"></textarea>';
   }
   function listPanel(kind, list, label) {
-    var h = "", i, custom;
+    var h = "", i;
     for (i = 0; i < list.length; i++) {
-      custom = isCustom(kind, list[i].id);
       h += '<li><div class="li">' + esc(label(list[i])) +
-        (custom ? ' <button type="button" class="btn sm adel" data-k="' + kind + '" data-i="' + list[i].id + '">Delete</button>' :
-          ' <span class="tiny">demo entry</span>') + "</div></li>";
+        ' <button type="button" class="btn sm adel" data-i="' + esc(list[i].id) + '">Delete</button></div></li>';
     }
-    return '<div class="panel"><h3>Existing</h3><ul class="list">' + h + "</ul></div>";
-  }
-  function isCustom(kind, id) {
-    var l = db.custom[kind] || [], i;
-    for (i = 0; i < l.length; i++) { if (l[i].id === id) { return true; } }
-    return false;
+    if (!h) { h = '<li><div class="li tiny muted">Nothing uploaded yet.</div></li>'; }
+    return '<div class="panel"><h3>Uploaded</h3><ul class="list">' + h + "</ul></div>";
   }
   function val(id) { var el = $(id); return el ? el.value : ""; }
   function lines(id) {
@@ -1050,68 +1152,65 @@
   }
 
   function wireAdmin() {
+    bindAll("#ak_lock", function () { ADMIN_OK = false; db.settings.adminKey = ""; save(); V.admin(); });
     bindAll(".adel", function () {
-      var kind = this.getAttribute("data-k"), id = this.getAttribute("data-i"), l = db.custom[kind], i;
-      for (i = 0; i < l.length; i++) { if (l[i].id === id) { l.splice(i, 1); break; } }
-      save(); V.admin();
+      var id = this.getAttribute("data-i");
+      if (!window.confirm("Delete this item for everyone?")) { return; }
+      cloudDelete(id, function () { V.admin(); });
     });
     bindAll("#an_save", function () {
       var urls = lines("an_eps"), epsArr = [], i;
       for (i = 0; i < urls.length; i++) { epsArr.push({ id: "ep" + (i + 1), number: i + 1, title: "Episode " + (i + 1), duration: "", video: urls[i] }); }
       if (!val("an_title")) { alert("Title is required."); return; }
-      db.custom.anime.push({
-        id: uid("a"), title: val("an_title"), cover: val("an_cover") || "/app/img/cover.svg",
+      cloudSave("anime", val("an_title"), {
+        title: val("an_title"), cover: val("an_cover") || "/app/img/cover.svg",
         genres: csv("an_genres"), year: val("an_year"), status: val("an_status") || "Ongoing",
         description: val("an_desc"), episodes: epsArr
       });
-      save(); V.admin();
     });
     bindAll("#mg_save", function () {
       if (!val("mg_title")) { alert("Title is required."); return; }
       var pg = lines("mg_pages");
-      db.custom.manga.push({
-        id: uid("m"), title: val("mg_title"), author: val("mg_author"), artist: val("mg_artist"),
+      cloudSave("manga", val("mg_title"), {
+        title: val("mg_title"), author: val("mg_author"), artist: val("mg_artist"),
         cover: val("mg_cover") || "/app/img/cover.svg", genres: csv("mg_genres"),
         status: val("mg_status") || "Ongoing", description: val("mg_desc"),
         chapters: [{ id: "c1", number: 1, title: "Chapter 1", pages: pg.length ? pg : ["/app/img/page.svg"] }]
       });
-      save(); V.admin();
     });
     bindAll("#bb_save", function () {
       var v = lines("bb_text"), ch = parseInt(val("bb_ch"), 10) || 1;
       if (!v.length) { alert("Paste at least one verse."); return; }
       db.custom.bible[val("bb_book") + "|" + ch] = v;
-      save(); alert("Chapter saved.");
+      BIBLE_CACHE[val("bb_book") + "|" + ch] = v;
+      save(); alert("Chapter saved on this device.");
     });
     bindAll("#nv_save", function () {
       if (!val("nv_title")) { alert("Title is required."); return; }
-      db.custom.novels.push({
-        id: uid("n"), title: val("nv_title"), author: val("nv_author"),
+      cloudSave("novels", val("nv_title"), {
+        title: val("nv_title"), author: val("nv_author"),
         cover: val("nv_cover") || "/app/img/cover.svg", genres: csv("nv_genres"),
         description: val("nv_desc"),
         chapters: [{ id: "nc1", number: 1, title: "Chapter 1", text: val("nv_text") }]
       });
-      save(); V.admin();
     });
     bindAll("#ar_save", function () {
       if (!val("ar_name")) { return; }
-      db.custom.artists.push({ id: uid("ar"), name: val("ar_name") }); save(); V.admin();
+      cloudSave("artists", val("ar_name"), { name: val("ar_name") });
     });
     bindAll("#al_save", function () {
       if (!val("al_title")) { return; }
-      db.custom.albums.push({
-        id: uid("al"), title: val("al_title"), artistId: val("al_artist"),
+      cloudSave("albums", val("al_title"), {
+        title: val("al_title"), artistId: val("al_artist"),
         cover: val("al_cover") || "/app/img/cover.svg", year: val("al_year")
       });
-      save(); V.admin();
     });
     bindAll("#sg_save", function () {
       if (!val("sg_title") || !val("sg_url")) { alert("Song title and audio URL are required."); return; }
-      db.custom.songs.push({
-        id: uid("s"), title: val("sg_title"), artistId: val("sg_artist"), albumId: val("sg_album"),
+      cloudSave("songs", val("sg_title"), {
+        title: val("sg_title"), artistId: val("sg_artist"), albumId: val("sg_album"),
         genre: val("sg_genre") || "Other", duration: val("sg_duration"), url: val("sg_url")
       });
-      save(); V.admin();
     });
   }
 
@@ -1136,6 +1235,7 @@
     var p0 = parts[0] || "home";
     setActive(p0 === "novel" ? "novels" : (p0 === "watch" ? "anime" : (p0 === "album" || p0 === "artist" ? "music" : p0)));
     if ($("nav").className === "open") { $("nav").className = ""; }
+    setFab(p0);
 
     if (p0 === "home" || p0 === "") { V.home(); }
     else if (p0 === "anime") { if (parts[1]) { V.animeDetail(parts[1]); } else { V.anime(); } }
@@ -1170,6 +1270,47 @@
   if (window.addEventListener) { window.addEventListener("hashchange", route, false); }
   else { window.attachEvent("onhashchange", route); }
 
+  /* ---------------- notifications for every device ---------------- */
+  function osNotify(n) {
+    if (!window.Notification || Notification.permission !== "granted") { return; }
+    try { new Notification(n.title, { body: n.body, icon: "/app/img/cover.svg" }); } catch (e) { /* ignore */ }
+  }
+  function showBanner(n) {
+    var bar = $("notif");
+    if (!bar) { return; }
+    bar.innerHTML = '<a href="' + esc(n.href || "#/home") + '"><strong>' + esc(n.title) + "</strong> " +
+      '<span class="tiny">' + esc(n.body) + "</span></a>" +
+      '<button type="button" class="pbtn sm" id="ndismiss">&times;</button>';
+    bar.className = "show";
+    on($("ndismiss"), "click", function () { bar.className = ""; });
+    setTimeout(function () { bar.className = ""; }, 12000);
+  }
+  function notifTick() {
+    xhrJSON("GET", "/api/public/notifications?t=" + (new Date()).getTime(), null, function (res) {
+      if (!res || !res.notifications || !res.notifications.length) { return; }
+      var list = res.notifications, seen = db.settings.notifSeen || "", fresh = [], i;
+      for (i = 0; i < list.length; i++) { if (list[i].created_at > seen) { fresh.push(list[i]); } }
+      db.settings.notifSeen = list[0].created_at;
+      save();
+      if (!seen || !fresh.length) { return; }
+      showBanner(fresh[0]);
+      osNotify(fresh[0]);
+      loadCloud(function () { /* keep the library fresh */ });
+    });
+  }
+
+  function setFab(p0) {
+    var fab = $("fab");
+    if (!fab) { return; }
+    var map = { anime: "anime", manga: "manga", novels: "novels", novel: "novels",
+      music: "music", album: "music", artist: "music", bible: "bible" };
+    fab.href = "#/admin/" + (map[p0] || "anime");
+  }
+
   if (!location.hash) { location.hash = "#/home"; }
-  route();
+  loadCloud(function () {
+    route();
+    notifTick();
+    setInterval(notifTick, 30000);
+  });
 })();

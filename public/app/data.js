@@ -20,24 +20,7 @@ var AV_DATA = (function () {
   var BBB = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
   var ED = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4";
 
-  var anime = [
-    { id: "a1", title: "Skyward Lantern", year: 2021, status: "Completed", genres: ["Adventure", "Fantasy"],
-      cover: "/app/img/cover.svg",
-      description: "A lantern-maker's apprentice chases a rumour of a floating island. Demo entry using a CC-BY Blender short as the sample video source.",
-      episodes: eps(6, BBB) },
-    { id: "a2", title: "Neon Harbor", year: 2023, status: "Ongoing", genres: ["Sci-Fi", "Action"],
-      cover: "/app/img/cover.svg",
-      description: "Dock workers in a rain-soaked port city discover a derelict cargo ship that should not exist.",
-      episodes: eps(4, ED) },
-    { id: "a3", title: "Quiet Kitchen Club", year: 2019, status: "Completed", genres: ["Comedy", "Romance"],
-      cover: "/app/img/cover.svg",
-      description: "Four students keep a tiny after-school kitchen alive. Gentle, slow, mostly about soup.",
-      episodes: eps(5, BBB) },
-    { id: "a4", title: "Hollow Bell", year: 2020, status: "Completed", genres: ["Horror", "Drama"],
-      cover: "/app/img/cover.svg",
-      description: "A village rings a bell every night. Nobody remembers who started it.",
-      episodes: eps(3, ED) }
-  ];
+  var anime = [];
 
   function pages(n) {
     var a = [], i;
@@ -52,20 +35,7 @@ var AV_DATA = (function () {
     return a;
   }
 
-  var manga = [
-    { id: "m1", title: "Paper Compass", author: "A. Rivera", artist: "A. Rivera",
-      status: "Ongoing", genres: ["Adventure", "Drama"], cover: "/app/img/cover.svg",
-      description: "A cartographer maps a coastline that keeps changing shape overnight.",
-      chapters: chapters(5, 8) },
-    { id: "m2", title: "Midnight Ramen Log", author: "K. Ando", artist: "S. Mori",
-      status: "Completed", genres: ["Comedy", "Slice of Life"], cover: "/app/img/cover.svg",
-      description: "One stall, one cook, one hundred late-night customers.",
-      chapters: chapters(4, 6) },
-    { id: "m3", title: "Iron Lily", author: "R. Okonkwo", artist: "R. Okonkwo",
-      status: "Ongoing", genres: ["Action", "Fantasy"], cover: "/app/img/cover.svg",
-      description: "A blacksmith forges garden tools that refuse to stay peaceful.",
-      chapters: chapters(6, 10) }
-  ];
+  var manga = [];
 
   function novelChapters(list) {
     var a = [], i;
@@ -83,41 +53,11 @@ var AV_DATA = (function () {
     "promise the way people keep small promises: badly, and with great seriousness.\n\n" +
     "By noon the sea was a grey line and the hills had closed behind her like a door.";
 
-  var novels = [
-    { id: "n1", title: "The Second Milestone", author: "Public Domain Sample",
-      genres: ["Literary", "Drama"], cover: "/app/img/cover.svg",
-      description: "A short sample novel included so the reader can be tested immediately.",
-      chapters: novelChapters([
-        { t: "The Harbour", x: loremPara },
-        { t: "The Hill Road", x: loremPara },
-        { t: "Winter Letters", x: loremPara },
-        { t: "Return", x: loremPara }
-      ]) },
-    { id: "n2", title: "Notes on Small Machines", author: "Public Domain Sample",
-      genres: ["Essays"], cover: "/app/img/cover.svg",
-      description: "Essays about clocks, bicycles and other honest devices.",
-      chapters: novelChapters([
-        { t: "Clocks", x: loremPara },
-        { t: "Bicycles", x: loremPara },
-        { t: "Levers", x: loremPara }
-      ]) }
-  ];
+  var novels = [];
 
-  var artists = [
-    { id: "ar1", name: "The Quiet Hours" },
-    { id: "ar2", name: "Kestrel Trio" }
-  ];
-  var albums = [
-    { id: "al1", title: "Long Evenings", artistId: "ar1", year: 2022, cover: "/app/img/cover.svg" },
-    { id: "al2", title: "Field Recordings", artistId: "ar2", year: 2020, cover: "/app/img/cover.svg" }
-  ];
-  var songs = [
-    { id: "s1", title: "Porch Light", artistId: "ar1", albumId: "al1", genre: "Ambient", duration: "3:41", url: "/media/music/porch-light.mp3" },
-    { id: "s2", title: "Blue Kitchen", artistId: "ar1", albumId: "al1", genre: "Ambient", duration: "4:12", url: "/media/music/blue-kitchen.mp3" },
-    { id: "s3", title: "Slow Train", artistId: "ar1", albumId: "al1", genre: "Folk", duration: "2:58", url: "/media/music/slow-train.mp3" },
-    { id: "s4", title: "Riverbank", artistId: "ar2", albumId: "al2", genre: "Jazz", duration: "5:20", url: "/media/music/riverbank.mp3" },
-    { id: "s5", title: "Nightbus", artistId: "ar2", albumId: "al2", genre: "Jazz", duration: "3:05", url: "/media/music/nightbus.mp3" }
-  ];
+  var artists = [];
+  var albums = [];
+  var songs = [];
 
   /* Bible: full 66-book structure with chapter counts. */
   var otRaw = "Genesis:50,Exodus:40,Leviticus:27,Numbers:36,Deuteronomy:34,Joshua:24,Judges:21,Ruth:4," +
@@ -145,41 +85,8 @@ var AV_DATA = (function () {
   }
   var bibleBooks = parseBooks(otRaw, "old").concat(parseBooks(ntRaw, "new"));
 
-  /* Sample verse text: World English Bible (public domain). */
-  var bibleText = {
-    "genesis|1": [
-      "In the beginning, God created the heavens and the earth.",
-      "The earth was formless and empty. Darkness was on the surface of the deep and God's Spirit was hovering over the surface of the waters.",
-      "God said, \u201cLet there be light,\u201d and there was light.",
-      "God saw the light, and saw that it was good. God divided the light from the darkness.",
-      "God called the light \u201cday\u201d, and the darkness he called \u201cnight\u201d. There was evening and there was morning, the first day.",
-      "God said, \u201cLet there be an expanse in the middle of the waters, and let it divide the waters from the waters.\u201d",
-      "God made the expanse, and divided the waters which were under the expanse from the waters which were above the expanse; and it was so.",
-      "God called the expanse \u201csky\u201d. There was evening and there was morning, a second day.",
-      "God said, \u201cLet the waters under the sky be gathered together to one place, and let the dry land appear;\u201d and it was so.",
-      "God called the dry land \u201cearth\u201d, and the gathering together of the waters he called \u201cseas\u201d. God saw that it was good."
-    ],
-    "psalms|23": [
-      "Yahweh is my shepherd: I shall lack nothing.",
-      "He makes me lie down in green pastures. He leads me beside still waters.",
-      "He restores my soul. He guides me in the paths of righteousness for his name's sake.",
-      "Even though I walk through the valley of the shadow of death, I will fear no evil, for you are with me. Your rod and your staff, they comfort me.",
-      "You prepare a table before me in the presence of my enemies. You anoint my head with oil. My cup runs over.",
-      "Surely goodness and loving kindness shall follow me all the days of my life, and I will dwell in Yahweh's house forever."
-    ],
-    "john|1": [
-      "In the beginning was the Word, and the Word was with God, and the Word was God.",
-      "The same was in the beginning with God.",
-      "All things were made through him. Without him, nothing was made that has been made.",
-      "In him was life, and the life was the light of men.",
-      "The light shines in the darkness, and the darkness hasn't overcome it.",
-      "There came a man sent from God, whose name was John.",
-      "The same came as a witness, that he might testify about the light, that all might believe through him.",
-      "He was not the light, but was sent that he might testify about the light.",
-      "The true light that enlightens everyone was coming into the world.",
-      "He was in the world, and the world was made through him, and the world didn't recognize him."
-    ]
-  };
+  /* Bible text is loaded from the server (King James Version, public domain). */
+  var bibleText = {};
 
   return {
     anime: anime,
