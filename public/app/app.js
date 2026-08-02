@@ -14,7 +14,7 @@
       progress: {},       /* "anime:a1" -> {ep, pos}, etc. */
       playlists: [],      /* {id,name,songs:[]} */
       custom: { anime: [], manga: [], novels: [], songs: [], albums: [], artists: [], bible: {} },
-      settings: { fontSize: 18, readerLight: false, lastSong: null, volume: 100 }
+      settings: { fontSize: 18, readerLight: false, lastSong: null, volume: 100, bibleTrans: "kjv" }
     };
   }
   function load() {
@@ -103,19 +103,20 @@
     return null;
   }
   var BIBLE_CACHE = {};
+  var bibleTranslation = db.settings.bibleTrans || "kjv";
   function bibleVerses(bookId, ch) {
-    var k = bookId + "|" + ch;
+    var k = bibleTranslation + ":" + bookId + "|" + ch;
     if (BIBLE_CACHE[k]) { return BIBLE_CACHE[k]; }
     if (db.custom.bible && db.custom.bible[k]) { return db.custom.bible[k]; }
     return null;
   }
   function fetchBible(bookId, ch, cb) {
-    xhrJSON("GET", "/api/public/bible?book=" + encodeURIComponent(bookId) + "&chapter=" + ch, null,
-      function (res) {
+    xhrJSON("GET", "/api/public/bible?book=" + encodeURIComponent(bookId) + "&chapter=" + ch + "&translation=" + bibleTranslation, null,
+      function (res, st) {
         if (res && res.verses && res.verses.length) {
-          BIBLE_CACHE[bookId + "|" + ch] = res.verses;
+          BIBLE_CACHE[bibleTranslation + ":" + bookId + "|" + ch] = res.verses;
           cb(true);
-        } else { cb(false); }
+        } else { cb(false, res && res.error ? res.error : ""); }
       });
   }
   function artistName(id) {
@@ -654,11 +655,11 @@
       }
     } else {
       h = '<p class="muted" id="bwait">Loading ' + esc(b.name) + " " + ch + " \u2026</p>";
-      fetchBible(b.id, ch, function (ok) {
+      fetchBible(b.id, ch, function (ok, errMsg) {
         if (location.hash.indexOf("#/bible/" + b.id + "/" + ch) !== 0) { return; }
         if (ok) { V.bibleRead(b.id, ch); }
         else if ($("bwait")) {
-          $("bwait").innerHTML = "Could not load this chapter right now. Check your connection and try again.";
+          $("bwait").innerHTML = esc(errMsg || "Could not load this chapter right now. Check your connection and try again.");
         }
       });
     }
@@ -676,8 +677,11 @@
       '<div class="bar">' +
       '<select id="bsel">' + bookOptions + "</select>" +
       '<select id="csel">' + chapterOptions + "</select>" +
-      '<button type="button" class="btn" id="bprev">&#9664; Previous chapter</button>' +
-      '<button type="button" class="btn" id="bnext">Next chapter &#9654;</button>' +
+      '<select id="trsel"><option value="kjv"' + (bibleTranslation === "kjv" ? " selected" : "") + '>English (KJV)</option>' +
+      '<option value="web"' + (bibleTranslation === "web" ? " selected" : "") + '>English (WEB)</option>' +
+      '<option value="tag"' + (bibleTranslation === "tag" ? " selected" : "") + '>Tagalog</option></select>' +
+      '<button type="button" class="btn" id="bprev">&#9664; Prev</button>' +
+      '<button type="button" class="btn" id="bnext">Next &#9654;</button>' +
       '<button type="button" class="btn sm" id="fplus">A+</button>' +
       '<button type="button" class="btn sm" id="fminus">A-</button>' +
       '<button type="button" class="btn sm" id="blight">Light / dark</button>' +
@@ -697,6 +701,11 @@
     });
     on($("bsel"), "change", function () { location.hash = "#/bible/" + this.value + "/1"; });
     on($("csel"), "change", function () { location.hash = "#/bible/" + b.id + "/" + this.value; });
+    on($("trsel"), "change", function () {
+      bibleTranslation = this.value;
+      db.settings.bibleTrans = bibleTranslation; save();
+      V.bibleRead(b.id, ch);
+    });
 
     setProgress("bible", b.id, { ch: ch, ts: (new Date()).getTime() });
     addHistory("bible", b.id + "-" + ch, b.name + " " + ch, "Bible", "#/bible/" + b.id + "/" + ch);
@@ -1066,39 +1075,41 @@
 
     if (adminTab === "anime") {
       h = '<div class="panel"><h3>Add anime</h3>' +
-        field("an_title", "Title") + field("an_cover", "Cover image URL", "/media/anime/example/cover.jpg") +
+        field("an_title", "Title") +
         fileBtn("an_cover", "+ Upload cover image", "image/*") +
+        '<input type="text" id="an_cover" style="display:none">' +
         field("an_genres", "Genres (comma separated)", "Action, Fantasy") +
         field("an_year", "Year", "2024") + field("an_status", "Status", "Ongoing") +
         area("an_desc", "Description") +
-        area("an_eps", "Episode video or embed links (one per line \u2014 MP4 file, or a YouTube/Vimeo/site link that plays in-app)", "/media/anime/example/episode-01.mp4") +
+        area("an_eps", "Episode video links (one per line \u2014 MP4 file, or a YouTube/Vimeo/site link that plays in-app)", "") +
         fileBtn("an_eps", "+ Upload video files", "video/*", true) +
         '<button type="button" class="btn primary" id="an_save">Save anime</button></div>' +
         listPanel("anime", all("anime"), function (x) { return x.title + " (" + x.episodes.length + " episodes)"; });
     } else if (adminTab === "manga") {
       h = '<div class="panel"><h3>Add manga</h3>' +
         field("mg_title", "Title") + field("mg_author", "Author") + field("mg_artist", "Artist") +
-        field("mg_cover", "Cover image URL", "/media/manga/example/cover.jpg") +
         fileBtn("mg_cover", "+ Upload cover image", "image/*") +
+        '<input type="text" id="mg_cover" style="display:none">' +
         field("mg_genres", "Genres (comma separated)") + field("mg_status", "Status", "Ongoing") +
         area("mg_desc", "Description") +
-        area("mg_pages", "Chapter 1 page image URLs (one per line, JPG/PNG)", "/media/manga/example/chapter-01/page-001.jpg") +
+        area("mg_pages", "Chapter 1 page images (upload below)", "") +
         fileBtn("mg_pages", "+ Upload page images", "image/*", true) +
         '<button type="button" class="btn primary" id="mg_save">Save manga</button></div>' +
         listPanel("manga", all("manga"), function (x) { return x.title + " (" + x.chapters.length + " chapters)"; });
     } else if (adminTab === "bible") {
       var bookOptions = "", bb = AV_DATA.bibleBooks, j;
       for (j = 0; j < bb.length; j++) { bookOptions += '<option value="' + bb[j].id + '">' + esc(bb[j].name) + "</option>"; }
-      h = '<div class="panel"><h3>Add or replace a chapter</h3>' +
+      h = '<div class="panel"><h3>Add Tagalog Bible chapter</h3>' +
+        '<p class="tiny muted">English (KJV) loads automatically from the server. Use this form to add Tagalog text \u2014 one verse per line.</p>' +
         "<label>Book</label><select id=\"bb_book\">" + bookOptions + "</select>" +
         field("bb_ch", "Chapter number", "1") +
-        area("bb_text", "Verses (one verse per line)") +
-        '<p class="tiny muted">Use a translation whose licence permits your use (for example the World English Bible, public domain).</p>' +
-        '<button type="button" class="btn primary" id="bb_save">Save chapter</button></div>';
+        area("bb_text", "Tagalog verses (one verse per line)") +
+        '<button type="button" class="btn primary" id="bb_save">Save Tagalog chapter</button></div>';
     } else if (adminTab === "novels") {
       h = '<div class="panel"><h3>Add novel</h3>' +
         field("nv_title", "Title") + field("nv_author", "Author") +
-        field("nv_cover", "Cover image URL") + fileBtn("nv_cover", "+ Upload cover image", "image/*") + field("nv_genres", "Genres (comma separated)") +
+        fileBtn("nv_cover", "+ Upload cover image", "image/*") +
+        '<input type="text" id="nv_cover" style="display:none">' + field("nv_genres", "Genres (comma separated)") +
         area("nv_desc", "Description") +
         area("nv_text", "Chapter 1 text") +
         '<button type="button" class="btn primary" id="nv_save">Save novel</button></div>' +
@@ -1111,16 +1122,16 @@
         '<button type="button" class="btn" id="ar_save">Save artist</button></div>' +
         '<div class="panel"><h3>Add album</h3>' + field("al_title", "Album name") +
         "<label>Artist</label><select id=\"al_artist\">" + arOpts + "</select>" +
-        field("al_cover", "Album artwork URL", "/media/music/example/cover.jpg") +
         fileBtn("al_cover", "+ Upload album art", "image/*") +
+        '<input type="text" id="al_cover" style="display:none">' +
         field("al_year", "Year") +
         '<button type="button" class="btn" id="al_save">Save album</button></div>' +
         '<div class="panel"><h3>Add song</h3>' + field("sg_title", "Song title") +
         "<label>Artist</label><select id=\"sg_artist\">" + arOpts + "</select>" +
         "<label>Album</label><select id=\"sg_album\">" + alOpts + "</select>" +
         field("sg_genre", "Genre") + field("sg_duration", "Duration", "3:30") +
-        field("sg_url", "Audio URL (MP3, or AAC/M4A)", "/media/music/example-song.mp3") +
-        fileBtn("sg_url", "+ Upload audio file", "audio/*") +
+        fileBtn("sg_url", "+ Upload audio file (MP3, AAC, M4A)", "audio/*") +
+        '<input type="text" id="sg_url" style="display:none">' +
         '<button type="button" class="btn primary" id="sg_save">Save song</button></div>' +
         listPanel("songs", all("songs"), function (x) { return x.title + " \u2014 " + artistName(x.artistId); });
     }
@@ -1218,10 +1229,16 @@
     });
     bindAll("#bb_save", function () {
       var v = lines("bb_text"), ch = parseInt(val("bb_ch"), 10) || 1;
-      if (!v.length) { alert("Paste at least one verse."); return; }
-      db.custom.bible[val("bb_book") + "|" + ch] = v;
-      BIBLE_CACHE[val("bb_book") + "|" + ch] = v;
-      save(); alert("Chapter saved on this device.");
+      if (!v.length) { alert("Paste at least one Tagalog verse."); return; }
+      BIBLE_CACHE["tag:" + val("bb_book") + "|" + ch] = v;
+      if (!db.custom.bible) { db.custom.bible = {}; }
+      db.custom.bible["tag:" + val("bb_book") + "|" + ch] = v;
+      save();
+      xhrJSON("POST", "/api/public/bible", { key: adminKey(), book: val("bb_book"), chapter: ch, translation: "tag", verses: v },
+        function (res) {
+          if (res && res.ok) { alert("Tagalog chapter saved! It will appear when users select Tagalog."); }
+          else { alert("Saved on this device, but cloud save failed. Check your connection."); }
+        });
     });
     bindAll("#nv_save", function () {
       if (!val("nv_title")) { alert("Title is required."); return; }
@@ -1244,7 +1261,7 @@
       });
     });
     bindAll("#sg_save", function () {
-      if (!val("sg_title") || !val("sg_url")) { alert("Song title and audio URL are required."); return; }
+      if (!val("sg_title") || !val("sg_url")) { alert("Song title and audio file are required. Click + Upload to choose an audio file."); return; }
       cloudSave("songs", val("sg_title"), {
         title: val("sg_title"), artistId: val("sg_artist"), albumId: val("sg_album"),
         genre: val("sg_genre") || "Other", duration: val("sg_duration"), url: val("sg_url")
