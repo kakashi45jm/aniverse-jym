@@ -48,6 +48,8 @@ export const Route = createFileRoute("/api/public/library")({
           return json({ error: "Wrong admin key" }, 401);
         }
 
+        if (body.action === "verify") return json({ ok: true });
+
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
         if (body.action === "delete") {
