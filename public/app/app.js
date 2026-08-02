@@ -91,6 +91,24 @@
       });
   }
 
+  var ADMIN_KEY_CLIENT = (window.VITE_ADMIN_UPLOAD_KEY) || "";
+  function uploadFile(file, folder, cb) {
+    var fd = new FormData();
+    fd.append("file", file);
+    fd.append("folder", folder || "media");
+    var x;
+    try { x = new XMLHttpRequest(); } catch (e) { cb(null, 0); return; }
+    x.onreadystatechange = function () {
+      if (x.readyState !== 4) { return; }
+      var out = null;
+      try { out = JSON.parse(x.responseText); } catch (e2) { out = null; }
+      cb(out, x.status);
+    };
+    x.open("POST", "/api/public/upload", true);
+    x.setRequestHeader("X-Admin-Key", adminKey() || ADMIN_KEY_CLIENT);
+    x.send(fd);
+  }
+
   function all(kind) { return (CLOUD[kind] || []).concat(db.custom[kind] || []); }
   function byId(kind, id) {
     var list = all(kind), i;
@@ -1182,23 +1200,48 @@
     var fileInputs = $("view").querySelectorAll('input[type=file]'), fi;
     for (fi = 0; fi < fileInputs.length; fi++) {
       on(fileInputs[fi], "change", function () {
+        var inputEl = this;
         var targetId = this.id.replace(/_file$/, "");
         var target = $(targetId);
         if (!target || !this.files || !this.files.length) { return; }
-        if (!(window.URL && window.URL.createObjectURL)) {
-          alert("Your browser does not support file upload. Please paste a URL instead.");
-          return;
-        }
         var multi = this.getAttribute("multiple") !== null;
-        if (multi) {
-          var urls = [], fi2;
-          for (fi2 = 0; fi2 < this.files.length; fi2++) {
-            urls.push(window.URL.createObjectURL(this.files[fi2]));
-          }
-          var existing = target.value.replace(/^\s+|\s+$/g, "");
-          target.value = existing ? existing + "\n" + urls.join("\n") : urls.join("\n");
+        var folder = "media";
+        if (targetId.indexOf("an_cover") === 0 || targetId.indexOf("mg_cover") === 0 ||
+            targetId.indexOf("nv_cover") === 0 || targetId.indexOf("al_cover") === 0) { folder = "covers"; }
+        else if (targetId.indexOf("an_eps") === 0) { folder = "videos"; }
+        else if (targetId.indexOf("mg_pages") === 0) { folder = "pages"; }
+        else if (targetId.indexOf("sg_url") === 0) { folder = "audio"; }
+
+        if (!multi) {
+          target.value = "";
+          target.placeholder = "Uploading " + this.files[0].name + " ...";
+          uploadFile(this.files[0], folder, function (res, st) {
+            if (res && res.url) {
+              target.value = res.url;
+              target.placeholder = "";
+            } else {
+              target.placeholder = "";
+              alert("Upload failed: " + ((res && res.error) || "try again"));
+            }
+          });
         } else {
-          target.value = window.URL.createObjectURL(this.files[0]);
+          var existing = target.value.replace(/^\s+|\s+$/g, "");
+          target.value = existing ? existing + "\n" : "";
+          target.placeholder = "Uploading " + this.files.length + " files ...";
+          var done = 0, total = this.files.length, collected = [];
+          for (var fi2 = 0; fi2 < this.files.length; fi2++) {
+            (function (f) {
+              uploadFile(f, folder, function (res, st) {
+                done++;
+                if (res && res.url) { collected.push(res.url); }
+                if (done >= total) {
+                  target.placeholder = "";
+                  var combined = collected.join("\n");
+                  target.value = target.value ? target.value + "\n" + combined : combined;
+                }
+              });
+            })(this.files[fi2]);
+          }
         }
       });
     }
