@@ -491,7 +491,11 @@
   };
 
   function isDirectVideo(u) {
-    u = String(u || "").split("?")[0].toLowerCase();
+    u = String(u || "").toLowerCase();
+    /* Uploaded files are served as /api/public/file?p=folder%2Fname.mp4 */
+    var m = u.match(/[?&]p=([^&]*)/);
+    if (m) { try { u = decodeURIComponent(m[1]); } catch (e) { u = m[1]; } }
+    else { u = u.split("?")[0]; }
     return /\.(mp4|m4v|mov|webm|ogv|m3u8)$/.test(u);
   }
 
