@@ -20,6 +20,7 @@ export type Database = {
           chapter: number
           created_at: string
           id: string
+          translation: string
           verses: Json
         }
         Insert: {
@@ -27,6 +28,7 @@ export type Database = {
           chapter: number
           created_at?: string
           id?: string
+          translation?: string
           verses: Json
         }
         Update: {
@@ -34,6 +36,7 @@ export type Database = {
           chapter?: number
           created_at?: string
           id?: string
+          translation?: string
           verses?: Json
         }
         Relationships: []

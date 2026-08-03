@@ -68,12 +68,13 @@ export const Route = createFileRoute("/api/public/upload")({
           return json({ error: error.message }, 500);
         }
 
-        const { data: urlData } = supabaseAdmin
-          .storage
-          .from("uploads")
-          .getPublicUrl(data?.path ?? path);
-
-        return json({ url: urlData.publicUrl, path: data?.path ?? path });
+        const storedPath = data?.path ?? path;
+        // The bucket is private; serve through our own stable proxy route.
+        // Relative URL so the same record works on preview and published domains.
+        return json({
+          url: `/api/public/file?p=${encodeURIComponent(storedPath)}`,
+          path: storedPath,
+        });
       },
     },
   },

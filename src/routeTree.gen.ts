@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPublicBibleRouteImport } from './routes/api/public/bible'
+import { Route as ApiPublicFileRouteImport } from './routes/api/public/file'
 import { Route as ApiPublicLibraryRouteImport } from './routes/api/public/library'
 import { Route as ApiPublicNotificationsRouteImport } from './routes/api/public/notifications'
 import { Route as ApiPublicUploadRouteImport } from './routes/api/public/upload'
@@ -23,6 +24,11 @@ const IndexRoute = IndexRouteImport.update({
 const ApiPublicBibleRoute = ApiPublicBibleRouteImport.update({
   id: '/api/public/bible',
   path: '/api/public/bible',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicFileRoute = ApiPublicFileRouteImport.update({
+  id: '/api/public/file',
+  path: '/api/public/file',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicLibraryRoute = ApiPublicLibraryRouteImport.update({
@@ -44,6 +50,7 @@ const ApiPublicUploadRoute = ApiPublicUploadRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/public/bible': typeof ApiPublicBibleRoute
+  '/api/public/file': typeof ApiPublicFileRoute
   '/api/public/library': typeof ApiPublicLibraryRoute
   '/api/public/notifications': typeof ApiPublicNotificationsRoute
   '/api/public/upload': typeof ApiPublicUploadRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/public/bible': typeof ApiPublicBibleRoute
+  '/api/public/file': typeof ApiPublicFileRoute
   '/api/public/library': typeof ApiPublicLibraryRoute
   '/api/public/notifications': typeof ApiPublicNotificationsRoute
   '/api/public/upload': typeof ApiPublicUploadRoute
@@ -59,6 +67,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/api/public/bible': typeof ApiPublicBibleRoute
+  '/api/public/file': typeof ApiPublicFileRoute
   '/api/public/library': typeof ApiPublicLibraryRoute
   '/api/public/notifications': typeof ApiPublicNotificationsRoute
   '/api/public/upload': typeof ApiPublicUploadRoute
@@ -68,6 +77,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/api/public/bible'
+    | '/api/public/file'
     | '/api/public/library'
     | '/api/public/notifications'
     | '/api/public/upload'
@@ -75,6 +85,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/api/public/bible'
+    | '/api/public/file'
     | '/api/public/library'
     | '/api/public/notifications'
     | '/api/public/upload'
@@ -82,6 +93,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/api/public/bible'
+    | '/api/public/file'
     | '/api/public/library'
     | '/api/public/notifications'
     | '/api/public/upload'
@@ -90,6 +102,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiPublicBibleRoute: typeof ApiPublicBibleRoute
+  ApiPublicFileRoute: typeof ApiPublicFileRoute
   ApiPublicLibraryRoute: typeof ApiPublicLibraryRoute
   ApiPublicNotificationsRoute: typeof ApiPublicNotificationsRoute
   ApiPublicUploadRoute: typeof ApiPublicUploadRoute
@@ -109,6 +122,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/bible'
       fullPath: '/api/public/bible'
       preLoaderRoute: typeof ApiPublicBibleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/file': {
+      id: '/api/public/file'
+      path: '/api/public/file'
+      fullPath: '/api/public/file'
+      preLoaderRoute: typeof ApiPublicFileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/library': {
@@ -138,6 +158,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiPublicBibleRoute: ApiPublicBibleRoute,
+  ApiPublicFileRoute: ApiPublicFileRoute,
   ApiPublicLibraryRoute: ApiPublicLibraryRoute,
   ApiPublicNotificationsRoute: ApiPublicNotificationsRoute,
   ApiPublicUploadRoute: ApiPublicUploadRoute,
@@ -145,13 +166,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
