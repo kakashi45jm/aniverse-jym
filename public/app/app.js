@@ -115,7 +115,8 @@
       try { out = JSON.parse(x.responseText); } catch (e2) { out = null; }
       cb(out, x.status);
     };
-    x.open("POST", "/api/public/upload", true);
+    var edgeUrl = (window.VITE_SUPABASE_URL || "") + "/functions/v1/upload-media";
+    x.open("POST", edgeUrl, true);
     x.setRequestHeader("X-Admin-Key", adminKey() || ADMIN_KEY_CLIENT);
     x.send(fd);
   }
@@ -1262,6 +1263,7 @@
               uploadFile(f, folder, function (res, st) {
                 done++;
                 if (res && res.url) { collected.push(res.url); }
+                else { alert("Upload failed for " + f.name + ": " + ((res && res.error) || "try again")); }
                 if (done >= total) {
                   target.placeholder = "";
                   var combined = collected.join("\n");
