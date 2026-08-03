@@ -1164,7 +1164,8 @@
         "<label>Album</label><select id=\"sg_album\">" + alOpts + "</select>" +
         field("sg_genre", "Genre") + field("sg_duration", "Duration", "3:30") +
         fileBtn("sg_url", "+ Upload audio file (MP3, AAC, M4A)", "audio/*") +
-        '<input type="text" id="sg_url" style="display:none">' +
+        field("sg_url", "Audio link (paste an MP3/M4A link, or upload above)", "https://example.com/song.mp3") +
+
         '<button type="button" class="btn primary" id="sg_save">Save song</button></div>' +
         listPanel("songs", all("songs"), function (x) { return x.title + " \u2014 " + artistName(x.artistId); });
     }
