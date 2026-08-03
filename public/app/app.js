@@ -455,21 +455,31 @@
   }
 
   var animeFilter = "All";
+  var animeCategory = "all";
   V.anime = function () {
     var list = all("anime"), h = "", i, g, filters = "";
+    var cats = [{ k: "all", label: "All" }, { k: "anime", label: "Anime" }, { k: "movie", label: "Anime Movies" }];
+    var catBar = "";
+    for (i = 0; i < cats.length; i++) {
+      catBar += '<button type="button" class="btn sm catfilter' + (cats[i].k === animeCategory ? " on" : "") +
+        '" data-c="' + cats[i].k + '">' + cats[i].label + "</button>";
+    }
     var gl = ["All"].concat(AV_DATA.genres);
     for (i = 0; i < gl.length; i++) {
       filters += '<button type="button" class="btn sm gfilter' + (gl[i] === animeFilter ? " on" : "") +
         '" data-g="' + gl[i] + '">' + gl[i] + "</button>";
     }
     for (i = 0; i < list.length; i++) {
+      if (animeCategory !== "all" && (list[i].category || "anime") !== animeCategory) { continue; }
       g = (list[i].genres || []).join(", ");
       if (animeFilter !== "All" && indexOfStr(list[i].genres || [], animeFilter) === -1) { continue; }
       h += card("#/anime/" + list[i].id, list[i].cover, list[i].title,
         list[i].year + " \u2022 " + list[i].status + " \u2022 " + g);
     }
     render(pageWrap("Anime", "Browse the anime catalog",
-      '<div class="bar">' + filters + "</div>" + '<div class="row">' + (h || '<p class="muted">No titles in this genre.</p>') + "</div>"));
+      '<div class="bar">' + catBar + "</div>" +
+      '<div class="bar">' + filters + "</div>" + '<div class="row">' + (h || '<p class="muted">No titles in this category.</p>') + "</div>"));
+    bindAll(".catfilter", function () { animeCategory = this.getAttribute("data-c"); V.anime(); });
     bindAll(".gfilter", function () { animeFilter = this.getAttribute("data-g"); V.anime(); });
   };
 
@@ -1109,12 +1119,13 @@
     if (adminTab === "anime") {
       h = '<div class="panel"><h3>Add anime</h3>' +
         field("an_title", "Title") +
+        "<label>Category</label><select id=\"an_category\"><option value=\"anime\">Anime (series)</option><option value=\"movie\">Anime Movie</option></select>" +
         fileBtn("an_cover", "+ Upload cover image", "image/*") +
         '<input type="text" id="an_cover" style="display:none">' +
         field("an_genres", "Genres (comma separated)", "Action, Fantasy") +
         field("an_year", "Year", "2024") + field("an_status", "Status", "Ongoing") +
         area("an_desc", "Description") +
-        area("an_eps", "Episode video links (one per line \u2014 MP4 file, or a YouTube/Vimeo/site link that plays in-app)", "") +
+        area("an_eps", "Episode video links (one per line \u2014 MP4 file, or a YouTube/Vimeo/site link that plays in-app). No limit on episodes.", "") +
         fileBtn("an_eps", "+ Upload video files", "video/*", true) +
         '<button type="button" class="btn primary" id="an_save">Save anime</button></div>' +
         listPanel("anime", all("anime"), function (x) { return x.title + " (" + x.episodes.length + " episodes)"; });
@@ -1269,10 +1280,11 @@
     });
     bindAll("#an_save", function () {
       var urls = lines("an_eps"), epsArr = [], i;
+      var category = val("an_category") || "anime";
       for (i = 0; i < urls.length; i++) { epsArr.push({ id: "ep" + (i + 1), number: i + 1, title: "Episode " + (i + 1), duration: "", video: urls[i] }); }
       if (!val("an_title")) { alert("Title is required."); return; }
       cloudSave("anime", val("an_title"), {
-        title: val("an_title"), cover: val("an_cover") || "/app/img/cover.svg",
+        title: val("an_title"), category: category, cover: val("an_cover") || "/app/img/cover.svg",
         genres: csv("an_genres"), year: val("an_year"), status: val("an_status") || "Ongoing",
         description: val("an_desc"), episodes: epsArr
       });

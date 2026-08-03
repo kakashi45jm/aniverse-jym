@@ -20,6 +20,26 @@ function bookName(slug: string) {
   return slug.replace(/-/g, " ");
 }
 
+/** Map our book slug to the 3-letter ID used by helloao API for Tagalog. */
+const HELLOAO_BOOK_MAP: Record<string, string> = {
+  "genesis": "GEN", "exodus": "EXO", "leviticus": "LEV", "numbers": "NUM", "deuteronomy": "DEU",
+  "joshua": "JOS", "judges": "JDG", "ruth": "RUT", "1-samuel": "1SA", "2-samuel": "2SA",
+  "1-kings": "1KI", "2-kings": "2KI", "1-chronicles": "1CH", "2-chronicles": "2CH",
+  "ezra": "EZR", "nehemiah": "NEH", "esther": "EST", "job": "JOB", "psalms": "PSA",
+  "proverbs": "PRO", "ecclesiastes": "ECC", "song-of-solomon": "SNG", "isaiah": "ISA",
+  "jeremiah": "JER", "lamentations": "LAM", "ezekiel": "EZK", "daniel": "DAN",
+  "hosea": "HOS", "joel": "JOL", "amos": "AMO", "obadiah": "OBA", "jonah": "JON",
+  "micah": "MIC", "nahum": "NAM", "habakkuk": "HAB", "zephaniah": "ZEP", "haggai": "HAG",
+  "zechariah": "ZEC", "malachi": "MAL",
+  "matthew": "MAT", "mark": "MRK", "luke": "LUK", "john": "JHN", "acts": "ACT",
+  "romans": "ROM", "1-corinthians": "1CO", "2-corinthians": "2CO", "galatians": "GAL",
+  "ephesians": "EPH", "philippians": "PHP", "colossians": "COL",
+  "1-thessalonians": "1TH", "2-thessalonians": "2TH", "1-timothy": "1TI",
+  "2-timothy": "2TI", "titus": "TIT", "philemon": "PHM", "hebrews": "HEB",
+  "james": "JAS", "1-peter": "1PE", "2-peter": "2PE", "1-john": "1JN", "2-john": "2JN",
+  "3-john": "3JN", "jude": "JUD", "revelation": "REV",
+};
+
 /** Map our book slug to the numeric book ID used by bolls.life API (1-66). */
 const BOLLS_BOOK_MAP: Record<string, number> = {
   "genesis": 1, "exodus": 2, "leviticus": 3, "numbers": 4, "deuteronomy": 5,
@@ -68,9 +88,48 @@ export const Route = createFileRoute("/api/public/bible")({
           return json({ book, chapter, translation, verses: cached.data.verses });
         }
 
-        // For Tagalog, there's no free API — only admin-uploaded text is available
+        // For Tagalog, fetch from helloao API (free, public domain Tagalog Bible)
         if (translation === "tag") {
-          return json({ error: "No Tagalog text uploaded yet for this chapter. Ask the admin to add it." }, 404);
+          const helloaoBook = HELLOAO_BOOK_MAP[book];
+          if (!helloaoBook) {
+            return json({ error: "Book not found in Tagalog translation" }, 404);
+          }
+          try {
+            const remote = await fetch(
+              `https://bible.helloao.org/api/tgl_ulb/${helloaoBook}/${chapter}.json`,
+            );
+            if (remote.ok) {
+              const payload = (await remote.json()) as {
+                chapter?: {
+                  content?: Array<{
+                    type: string;
+                    number?: number;
+                    content?: string[];
+                  }>;
+                };
+              };
+              const content = payload.chapter?.content ?? [];
+              verses = content
+                .filter((item) => item.type === "verse")
+                .map((item) => (item.content ?? []).join(" ").replace(/\s+/g, " ").trim());
+            }
+          } catch {
+            // fall through to error below
+          }
+
+          if (!verses.length) {
+            return json({ error: "Could not load Tagalog text for this chapter right now." }, 502);
+          }
+
+          // Cache for next time
+          await supabaseAdmin
+            .from("bible_cache")
+            .upsert(
+              { book, chapter, translation, verses: verses as never },
+              { onConflict: "book,chapter,translation" },
+            );
+
+          return json({ book, chapter, translation, verses });
         }
 
         // Try bible-api.com first (KJV or WEB)
