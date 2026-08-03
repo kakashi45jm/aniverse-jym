@@ -1164,7 +1164,8 @@
         "<label>Album</label><select id=\"sg_album\">" + alOpts + "</select>" +
         field("sg_genre", "Genre") + field("sg_duration", "Duration", "3:30") +
         fileBtn("sg_url", "+ Upload audio file (MP3, AAC, M4A)", "audio/*") +
-        '<input type="text" id="sg_url" style="display:none">' +
+        field("sg_url", "Audio link (paste an MP3/M4A link, or upload above)", "https://example.com/song.mp3") +
+
         '<button type="button" class="btn primary" id="sg_save">Save song</button></div>' +
         listPanel("songs", all("songs"), function (x) { return x.title + " \u2014 " + artistName(x.artistId); });
     }
@@ -1320,7 +1321,9 @@
       });
     });
     bindAll("#sg_save", function () {
-      if (!val("sg_title") || !val("sg_url")) { alert("Song title and audio file are required. Click + Upload to choose an audio file."); return; }
+      if (!val("sg_title")) { alert("Song title is required."); return; }
+      if (!val("sg_url")) { alert("Add an audio link, or click + Upload to choose an audio file."); return; }
+
       cloudSave("songs", val("sg_title"), {
         title: val("sg_title"), artistId: val("sg_artist"), albumId: val("sg_album"),
         genre: val("sg_genre") || "Other", duration: val("sg_duration"), url: val("sg_url")
