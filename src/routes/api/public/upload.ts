@@ -70,9 +70,9 @@ export const Route = createFileRoute("/api/public/upload")({
 
         const storedPath = data?.path ?? path;
         // The bucket is private; serve through our own stable proxy route.
-        const origin = new URL(request.url).origin;
+        // Relative URL so the same record works on preview and published domains.
         return json({
-          url: `${origin}/api/public/file?p=${encodeURIComponent(storedPath)}`,
+          url: `/api/public/file?p=${encodeURIComponent(storedPath)}`,
           path: storedPath,
         });
       },
