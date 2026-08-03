@@ -1321,7 +1321,9 @@
       });
     });
     bindAll("#sg_save", function () {
-      if (!val("sg_title") || !val("sg_url")) { alert("Song title and audio file are required. Click + Upload to choose an audio file."); return; }
+      if (!val("sg_title")) { alert("Song title is required."); return; }
+      if (!val("sg_url")) { alert("Add an audio link, or click + Upload to choose an audio file."); return; }
+
       cloudSave("songs", val("sg_title"), {
         title: val("sg_title"), artistId: val("sg_artist"), albumId: val("sg_album"),
         genre: val("sg_genre") || "Other", duration: val("sg_duration"), url: val("sg_url")
