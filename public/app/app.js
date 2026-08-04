@@ -1212,15 +1212,18 @@
         '<input type="text" id="al_cover" style="display:none">' +
         field("al_year", "Year") +
         '<button type="button" class="btn" id="al_save">Save album</button></div>' +
-        '<div class="panel"><h3>Add song</h3>' + field("sg_title", "Song title") +
-        "<label>Artist</label><select id=\"sg_artist\">" + arOpts + "</select>" +
-        "<label>Album</label><select id=\"sg_album\">" + alOpts + "</select>" +
-        field("sg_genre", "Genre") + field("sg_duration", "Duration", "3:30") +
+        '<div class="panel"><h3>Add song</h3>' +
+        '<p class="tiny muted">Upload the audio first \u2014 the title, artist and duration fill in automatically from the file.</p>' +
         fileBtn("sg_url", "+ Upload audio file (MP3, AAC, M4A)", "audio/*") +
         field("sg_url", "Audio link (paste an MP3/M4A link, or upload above)", "https://example.com/song.mp3") +
-
+        field("sg_title", "Song title") +
+        field("sg_artist_name", "Artist / who sings-writes it (auto from the file)", "") +
+        "<label>Or pick a saved artist</label><select id=\"sg_artist\"><option value=\"\">\u2014 none \u2014</option>" + arOpts + "</select>" +
+        "<label>Album</label><select id=\"sg_album\"><option value=\"\">\u2014 none \u2014</option>" + alOpts + "</select>" +
+        field("sg_genre", "Genre") + field("sg_duration", "Duration (auto)", "3:30") +
         '<button type="button" class="btn primary" id="sg_save">Save song</button></div>' +
         listPanel("songs", all("songs"), function (x) { return x.title + " \u2014 " + artistName(x.artistId); });
+
     }
 
     render(pageWrap("Admin", "Uploads are saved in the cloud \u2014 everyone sees them, and every device gets a notification",
