@@ -252,6 +252,24 @@
     } catch (e) { /* ignore */ }
   }
 
+  var prefetcher = null;
+  function prefetchNext() {
+    if (!queue.length) { return; }
+    var n = qIndex + 1;
+    if (n >= queue.length) { n = 0; }
+    var s = songById(queue[n]);
+    if (!s || !s.url || queue.length < 2) { return; }
+    try {
+      if (!prefetcher) { prefetcher = document.createElement("audio"); prefetcher.volume = 0; }
+      if (prefetcher.getAttribute("data-u") !== s.url) {
+        prefetcher.setAttribute("data-u", s.url);
+        prefetcher.preload = "auto";
+        prefetcher.src = s.url;
+        prefetcher.load();
+      }
+    } catch (e) { /* ignore */ }
+  }
+
   function playCurrent() {
     var s = songById(queue[qIndex]);
     if (!s) { return; }
@@ -259,7 +277,9 @@
     $("pl-title").innerHTML = esc(s.title);
     $("pl-sub").innerHTML = esc(artistName(s.artistId) + " \u2014 " + albumTitle(s.albumId));
     $("pl-img").src = albumCover(s.albumId);
+    audio.preload = "auto";
     audio.src = s.url;
+    try { audio.load(); } catch (e0) { /* ignore */ }
     audio.volume = db.settings.volume / 100;
     wantPlaying = true;
     try { audio.play(); } catch (e) { /* ignore */ }
@@ -269,19 +289,19 @@
     save();
     addHistory("song", s.id, s.title, artistName(s.artistId), "#/music");
     setProgress("music", "last", { songId: s.id, ts: (new Date()).getTime() });
+    setTimeout(prefetchNext, 1500);
   }
 
   function nextTrack(auto) {
     if (!queue.length) { return; }
-    if (repeat && auto) { audio.currentTime = 0; audio.play(); return; }
+    if (repeat && auto) { audio.currentTime = 0; try { audio.play(); } catch (e) { /* ignore */ } return; }
     if (shuffle) { qIndex = Math.floor(Math.random() * queue.length); }
     else { qIndex = qIndex + 1; }
-    if (qIndex >= queue.length) {
-      if (auto && !repeat) { qIndex = queue.length - 1; $("pl-play").innerHTML = "&#9654;"; return; }
-      qIndex = 0;
-    }
+    /* keep playing continuously: wrap around to the first song instead of stopping */
+    if (qIndex >= queue.length) { qIndex = 0; }
     playCurrent();
   }
+
   function prevTrack() {
     if (!queue.length) { return; }
     if (audio.currentTime > 3) { audio.currentTime = 0; return; }
