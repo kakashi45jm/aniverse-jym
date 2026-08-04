@@ -73,9 +73,9 @@
     });
   }
 
-  function cloudSave(kind, title, payload, cb) {
+  function cloudSave(kind, title, payload, cb, slug) {
     xhrJSON("POST", "/api/public/library",
-      { key: adminKey(), kind: KIND_TO_API[kind], title: title, payload: payload },
+      { key: adminKey(), kind: KIND_TO_API[kind], title: title, payload: payload, slug: slug || undefined },
       function (res, st) {
         if (st === 401) { ADMIN_OK = false; alert("Wrong admin key."); V.admin(); return; }
         if (!res || !res.ok) { alert("Could not upload: " + ((res && res.error) || "no connection")); return; }
@@ -92,34 +92,43 @@
   }
 
   var ADMIN_KEY_CLIENT = (window.VITE_ADMIN_UPLOAD_KEY) || "";
+
+  function setStatus(msg) { var bar = $("upload_status"); if (bar) { bar.innerHTML = msg ? esc(msg) : ""; } }
+
+  /* Uploads the file straight to storage with a signed upload URL, so there is
+     no server body-size limit — big videos (400MB, 1GB+) go through fine. */
   function uploadFile(file, folder, cb) {
-    var fd = new FormData();
-    fd.append("file", file);
-    fd.append("folder", folder || "media");
-    var x;
-    try { x = new XMLHttpRequest(); } catch (e) { cb(null, 0); return; }
-    if (x.upload) {
-      x.upload.onprogress = function (e) {
-        if (e.lengthComputable) {
-          var pct = Math.round((e.loaded / e.total) * 100);
-          var bar = $("upload_status");
-          if (bar) { bar.innerHTML = "Uploading " + file.name + " — " + pct + "%"; }
+    xhrJSON("POST", "/api/public/upload-url",
+      { key: adminKey() || ADMIN_KEY_CLIENT, name: file.name, folder: folder || "media" },
+      function (res, st) {
+        if (!res || !res.uploadUrl) {
+          cb(res || { error: st === 401 ? "Wrong admin key" : "Could not start the upload" }, st || 0);
+          return;
         }
-      };
-    }
-    x.onreadystatechange = function () {
-      if (x.readyState !== 4) { return; }
-      var bar = $("upload_status");
-      if (bar) { bar.innerHTML = ""; }
-      var out = null;
-      try { out = JSON.parse(x.responseText); } catch (e2) { out = null; }
-      cb(out, x.status);
-    };
-    var edgeUrl = (window.VITE_SUPABASE_URL || "") + "/functions/v1/upload-media";
-    x.open("POST", edgeUrl, true);
-    x.setRequestHeader("X-Admin-Key", adminKey() || ADMIN_KEY_CLIENT);
-    x.send(fd);
+        var x;
+        try { x = new XMLHttpRequest(); } catch (e) { cb(null, 0); return; }
+        if (x.upload) {
+          x.upload.onprogress = function (e) {
+            if (e.lengthComputable) {
+              var mb = Math.round(e.total / 1048576);
+              setStatus("Uploading " + file.name + " (" + mb + " MB) \u2014 " +
+                Math.round((e.loaded / e.total) * 100) + "%");
+            }
+          };
+        }
+        x.onreadystatechange = function () {
+          if (x.readyState !== 4) { return; }
+          setStatus("");
+          if (x.status >= 200 && x.status < 300) { cb({ url: res.url, path: res.path }, 200); }
+          else { cb({ error: "Upload failed (" + x.status + "). Check your connection and try again." }, x.status); }
+        };
+        x.open("PUT", res.uploadUrl, true);
+        x.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+        x.setRequestHeader("x-upsert", "true");
+        x.send(file);
+      });
   }
+
 
   function all(kind) { return (CLOUD[kind] || []).concat(db.custom[kind] || []); }
   function byId(kind, id) {
@@ -243,6 +252,24 @@
     } catch (e) { /* ignore */ }
   }
 
+  var prefetcher = null;
+  function prefetchNext() {
+    if (!queue.length) { return; }
+    var n = qIndex + 1;
+    if (n >= queue.length) { n = 0; }
+    var s = songById(queue[n]);
+    if (!s || !s.url || queue.length < 2) { return; }
+    try {
+      if (!prefetcher) { prefetcher = document.createElement("audio"); prefetcher.volume = 0; }
+      if (prefetcher.getAttribute("data-u") !== s.url) {
+        prefetcher.setAttribute("data-u", s.url);
+        prefetcher.preload = "auto";
+        prefetcher.src = s.url;
+        prefetcher.load();
+      }
+    } catch (e) { /* ignore */ }
+  }
+
   function playCurrent() {
     var s = songById(queue[qIndex]);
     if (!s) { return; }
@@ -250,7 +277,9 @@
     $("pl-title").innerHTML = esc(s.title);
     $("pl-sub").innerHTML = esc(artistName(s.artistId) + " \u2014 " + albumTitle(s.albumId));
     $("pl-img").src = albumCover(s.albumId);
+    audio.preload = "auto";
     audio.src = s.url;
+    try { audio.load(); } catch (e0) { /* ignore */ }
     audio.volume = db.settings.volume / 100;
     wantPlaying = true;
     try { audio.play(); } catch (e) { /* ignore */ }
@@ -260,19 +289,21 @@
     save();
     addHistory("song", s.id, s.title, artistName(s.artistId), "#/music");
     setProgress("music", "last", { songId: s.id, ts: (new Date()).getTime() });
+    setTimeout(prefetchNext, 1500);
   }
 
   function nextTrack(auto) {
     if (!queue.length) { return; }
-    if (repeat && auto) { audio.currentTime = 0; audio.play(); return; }
+    if (repeat && auto) { audio.currentTime = 0; try { audio.play(); } catch (e) { /* ignore */ } return; }
+    if (auto && queue.length === 1) { wantPlaying = false; $("pl-play").innerHTML = "&#9654;"; return; }
+
     if (shuffle) { qIndex = Math.floor(Math.random() * queue.length); }
     else { qIndex = qIndex + 1; }
-    if (qIndex >= queue.length) {
-      if (auto && !repeat) { qIndex = queue.length - 1; $("pl-play").innerHTML = "&#9654;"; return; }
-      qIndex = 0;
-    }
+    /* keep playing continuously: wrap around to the first song instead of stopping */
+    if (qIndex >= queue.length) { qIndex = 0; }
     playCurrent();
   }
+
   function prevTrack() {
     if (!queue.length) { return; }
     if (audio.currentTime > 3) { audio.currentTime = 0; return; }
@@ -1118,20 +1149,30 @@
     }
 
     if (adminTab === "anime") {
-      h = '<div class="panel"><h3>Add anime</h3>' +
-        field("an_title", "Title") +
+      var anList = all("anime"), anOpts = '<option value="">\u2014 New anime (create) \u2014</option>', ai;
+      for (ai = 0; ai < anList.length; ai++) {
+        anOpts += '<option value="' + esc(anList[ai].id) + '">' + esc(anList[ai].title) +
+          " (" + ((anList[ai].episodes || []).length) + " eps)</option>";
+      }
+      h = '<div class="panel"><h3>Add anime / add episodes</h3>' +
+        '<label>Add episodes to</label><select id="an_existing">' + anOpts + "</select>" +
+        '<p class="tiny muted">Pick an existing title to ADD new episodes to it (Episode 2, 3, 4 \u2026). Leave it on "New anime" to create a new title.</p>' +
+        field("an_title", "Title (only for a new anime)") +
         "<label>Category</label><select id=\"an_category\"><option value=\"anime\">Anime (series)</option><option value=\"movie\">Anime Movie</option></select>" +
         fileBtn("an_cover", "+ Upload cover image", "image/*") +
         '<input type="text" id="an_cover" style="display:none">' +
         field("an_genres", "Genres (comma separated)", "Action, Fantasy") +
         field("an_year", "Year", "2024") + field("an_status", "Status", "Ongoing") +
         area("an_desc", "Description") +
+        field("an_epstart", "Start numbering at episode (leave blank = continue automatically)", "2") +
+        area("an_eptitles", "Episode titles (optional, one per line, matches the links below)", "") +
         area("an_eps", "Episode video links (one per line \u2014 MP4 file, or a YouTube/Vimeo/site link that plays in-app). No limit on episodes.", "") +
-        fileBtn("an_eps", "+ Upload video files", "video/*", true) +
-        '<button type="button" class="btn primary" id="an_save">Save anime</button></div>' +
-        listPanel("anime", all("anime"), function (x) { return x.title + " (" + x.episodes.length + " episodes)"; });
+        fileBtn("an_eps", "+ Upload video files (any size)", "video/*", true) +
+        '<button type="button" class="btn primary" id="an_save">Save</button></div>' +
+        listPanel("anime", all("anime"), function (x) { return x.title + " (" + (x.episodes || []).length + " episodes)"; });
     } else if (adminTab === "manga") {
       h = '<div class="panel"><h3>Add manga</h3>' +
+
         field("mg_title", "Title") + field("mg_author", "Author") + field("mg_artist", "Artist") +
         fileBtn("mg_cover", "+ Upload cover image", "image/*") +
         '<input type="text" id="mg_cover" style="display:none">' +
@@ -1171,15 +1212,18 @@
         '<input type="text" id="al_cover" style="display:none">' +
         field("al_year", "Year") +
         '<button type="button" class="btn" id="al_save">Save album</button></div>' +
-        '<div class="panel"><h3>Add song</h3>' + field("sg_title", "Song title") +
-        "<label>Artist</label><select id=\"sg_artist\">" + arOpts + "</select>" +
-        "<label>Album</label><select id=\"sg_album\">" + alOpts + "</select>" +
-        field("sg_genre", "Genre") + field("sg_duration", "Duration", "3:30") +
+        '<div class="panel"><h3>Add song</h3>' +
+        '<p class="tiny muted">Upload the audio first \u2014 the title, artist and duration fill in automatically from the file.</p>' +
         fileBtn("sg_url", "+ Upload audio file (MP3, AAC, M4A)", "audio/*") +
         field("sg_url", "Audio link (paste an MP3/M4A link, or upload above)", "https://example.com/song.mp3") +
-
+        field("sg_title", "Song title") +
+        field("sg_artist_name", "Artist / who sings-writes it (auto from the file)", "") +
+        "<label>Or pick a saved artist</label><select id=\"sg_artist\"><option value=\"\">\u2014 none \u2014</option>" + arOpts + "</select>" +
+        "<label>Album</label><select id=\"sg_album\"><option value=\"\">\u2014 none \u2014</option>" + alOpts + "</select>" +
+        field("sg_genre", "Genre") + field("sg_duration", "Duration (auto)", "3:30") +
         '<button type="button" class="btn primary" id="sg_save">Save song</button></div>' +
         listPanel("songs", all("songs"), function (x) { return x.title + " \u2014 " + artistName(x.artistId); });
+
     }
 
     render(pageWrap("Admin", "Uploads are saved in the cloud \u2014 everyone sees them, and every device gets a notification",
@@ -1207,6 +1251,32 @@
     if (!h) { h = '<li><div class="li tiny muted">Nothing uploaded yet.</div></li>'; }
     return '<div class="panel"><h3>Uploaded</h3><ul class="list">' + h + "</ul></div>";
   }
+
+  /* Reads title / artist / duration straight out of the chosen audio file. */
+  function autoSongMeta(file) {
+    var name = String(file.name || "").replace(/\.[a-z0-9]+$/i, "").replace(/_/g, " ");
+    var parts = name.split(/\s+-\s+/);
+    var guessArtist = "", guessTitle = name;
+    if (parts.length > 1) { guessArtist = parts[0]; guessTitle = parts.slice(1).join(" - "); }
+    if ($("sg_title") && !val("sg_title")) { $("sg_title").value = guessTitle.replace(/^\s+|\s+$/g, ""); }
+    if ($("sg_artist_name") && !val("sg_artist_name") && guessArtist) {
+      $("sg_artist_name").value = guessArtist.replace(/^\s+|\s+$/g, "");
+    }
+    if (!window.URL || !window.URL.createObjectURL) { return; }
+    try {
+      var blobUrl = window.URL.createObjectURL(file);
+      var probe = document.createElement("audio");
+      probe.preload = "metadata";
+      on(probe, "loadedmetadata", function () {
+        if ($("sg_duration") && probe.duration && isFinite(probe.duration)) {
+          $("sg_duration").value = fmtTime(probe.duration);
+        }
+        try { window.URL.revokeObjectURL(blobUrl); } catch (e) { /* ignore */ }
+      });
+      probe.src = blobUrl;
+    } catch (e2) { /* ignore */ }
+  }
+
   function val(id) { var el = $(id); return el ? el.value : ""; }
   function lines(id) {
     var v = val(id).split("\n"), out = [], i;
@@ -1242,9 +1312,11 @@
         else if (targetId.indexOf("sg_url") === 0) { folder = "audio"; }
 
         if (!multi) {
+          var theFile = this.files[0];
           target.value = "";
-          target.placeholder = "Uploading " + this.files[0].name + " ...";
-          uploadFile(this.files[0], folder, function (res, st) {
+          target.placeholder = "Uploading " + theFile.name + " ...";
+          if (targetId.indexOf("sg_url") === 0) { autoSongMeta(theFile); }
+          uploadFile(theFile, folder, function (res, st) {
             if (res && res.url) {
               target.value = res.url;
               target.placeholder = "";
@@ -1254,6 +1326,7 @@
             }
           });
         } else {
+
           var existing = target.value.replace(/^\s+|\s+$/g, "");
           target.value = existing ? existing + "\n" : "";
           target.placeholder = "Uploading " + this.files.length + " files ...";
@@ -1281,16 +1354,50 @@
       cloudDelete(id, function () { V.admin(); });
     });
     bindAll("#an_save", function () {
-      var urls = lines("an_eps"), epsArr = [], i;
+      var urls = lines("an_eps"), epTitles = lines("an_eptitles"), i;
       var category = val("an_category") || "anime";
-      for (i = 0; i < urls.length; i++) { epsArr.push({ id: "ep" + (i + 1), number: i + 1, title: "Episode " + (i + 1), duration: "", video: urls[i] }); }
-      if (!val("an_title")) { alert("Title is required."); return; }
-      cloudSave("anime", val("an_title"), {
-        title: val("an_title"), category: category, cover: val("an_cover") || "/app/img/cover.svg",
-        genres: csv("an_genres"), year: val("an_year"), status: val("an_status") || "Ongoing",
-        description: val("an_desc"), episodes: epsArr
-      });
+      var existingId = val("an_existing");
+      var existing = existingId ? byId("anime", existingId) : null;
+      var oldEps = existing && existing.episodes ? existing.episodes.slice(0) : [];
+      var start = parseInt(val("an_epstart"), 10);
+      var highest = 0;
+      for (i = 0; i < oldEps.length; i++) { if ((oldEps[i].number || 0) > highest) { highest = oldEps[i].number; } }
+      if (!start || start < 1) { start = highest + 1; }
+      if (!existing && !val("an_title")) { alert("Title is required for a new anime."); return; }
+      if (!urls.length) { alert("Add at least one episode link, or upload a video file."); return; }
+
+      var newEps = [], num;
+      for (i = 0; i < urls.length; i++) {
+        num = start + i;
+        newEps.push({
+          id: "ep" + num, number: num,
+          title: epTitles[i] ? epTitles[i] : "Episode " + num,
+          duration: "", video: urls[i]
+        });
+      }
+      /* replace any episode that reuses a number, then keep everything sorted */
+      var merged = [], j, clash;
+      for (i = 0; i < oldEps.length; i++) {
+        clash = false;
+        for (j = 0; j < newEps.length; j++) { if (newEps[j].number === oldEps[i].number) { clash = true; } }
+        if (!clash) { merged.push(oldEps[i]); }
+      }
+      merged = merged.concat(newEps);
+      merged.sort(function (a, b) { return (a.number || 0) - (b.number || 0); });
+
+      var title = existing ? existing.title : val("an_title");
+      cloudSave("anime", title, {
+        title: title,
+        category: existing && existing.category ? existing.category : category,
+        cover: val("an_cover") || (existing && existing.cover) || "/app/img/cover.svg",
+        genres: csv("an_genres").length ? csv("an_genres") : ((existing && existing.genres) || []),
+        year: val("an_year") || (existing && existing.year) || "",
+        status: val("an_status") || (existing && existing.status) || "Ongoing",
+        description: val("an_desc") || (existing && existing.description) || "",
+        episodes: merged
+      }, null, existing ? existing.id : null);
     });
+
     bindAll("#mg_save", function () {
       if (!val("mg_title")) { alert("Title is required."); return; }
       var pg = lines("mg_pages");
@@ -1338,11 +1445,25 @@
       if (!val("sg_title")) { alert("Song title is required."); return; }
       if (!val("sg_url")) { alert("Add an audio link, or click + Upload to choose an audio file."); return; }
 
-      cloudSave("songs", val("sg_title"), {
-        title: val("sg_title"), artistId: val("sg_artist"), albumId: val("sg_album"),
-        genre: val("sg_genre") || "Other", duration: val("sg_duration"), url: val("sg_url")
-      });
+      var typedArtist = val("sg_artist_name").replace(/^\s+|\s+$/g, "");
+      function finish(artistId) {
+        cloudSave("songs", val("sg_title"), {
+          title: val("sg_title"), artistId: artistId || "", albumId: val("sg_album"),
+          genre: val("sg_genre") || "Other", duration: val("sg_duration"), url: val("sg_url")
+        });
+      }
+      if (typedArtist) {
+        var ars = all("artists"), ai2, found = null;
+        for (ai2 = 0; ai2 < ars.length; ai2++) {
+          if (String(ars[ai2].name).toLowerCase() === typedArtist.toLowerCase()) { found = ars[ai2]; }
+        }
+        if (found) { finish(found.id); return; }
+        cloudSave("artists", typedArtist, { name: typedArtist }, function (slug) { finish(slug); });
+        return;
+      }
+      finish(val("sg_artist"));
     });
+
   }
 
   /* ---------------- router ---------------- */

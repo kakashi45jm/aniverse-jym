@@ -87,9 +87,11 @@ export const Route = createFileRoute("/api/public/bible")({
         if (cached.data?.verses) {
           return json({ book, chapter, translation, verses: cached.data.verses });
         }
+        let verses: string[] = [];
 
         // For Tagalog, fetch from helloao API (free, public domain Tagalog Bible)
         if (translation === "tag") {
+
           const helloaoBook = HELLOAO_BOOK_MAP[book];
           if (!helloaoBook) {
             return json({ error: "Book not found in Tagalog translation" }, 404);
@@ -134,7 +136,6 @@ export const Route = createFileRoute("/api/public/bible")({
 
         // Try bible-api.com first (KJV or WEB)
         const apiTranslation = translation === "kjv" ? "kjv" : "web";
-        let verses: string[] = [];
 
         try {
           const remote = await fetch(

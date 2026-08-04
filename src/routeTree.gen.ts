@@ -15,6 +15,7 @@ import { Route as ApiPublicFileRouteImport } from './routes/api/public/file'
 import { Route as ApiPublicLibraryRouteImport } from './routes/api/public/library'
 import { Route as ApiPublicNotificationsRouteImport } from './routes/api/public/notifications'
 import { Route as ApiPublicUploadRouteImport } from './routes/api/public/upload'
+import { Route as ApiPublicUploadUrlRouteImport } from './routes/api/public/upload-url'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +47,11 @@ const ApiPublicUploadRoute = ApiPublicUploadRouteImport.update({
   path: '/api/public/upload',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicUploadUrlRoute = ApiPublicUploadUrlRouteImport.update({
+  id: '/api/public/upload-url',
+  path: '/api/public/upload-url',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/api/public/library': typeof ApiPublicLibraryRoute
   '/api/public/notifications': typeof ApiPublicNotificationsRoute
   '/api/public/upload': typeof ApiPublicUploadRoute
+  '/api/public/upload-url': typeof ApiPublicUploadUrlRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/api/public/library': typeof ApiPublicLibraryRoute
   '/api/public/notifications': typeof ApiPublicNotificationsRoute
   '/api/public/upload': typeof ApiPublicUploadRoute
+  '/api/public/upload-url': typeof ApiPublicUploadUrlRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,6 +79,7 @@ export interface FileRoutesById {
   '/api/public/library': typeof ApiPublicLibraryRoute
   '/api/public/notifications': typeof ApiPublicNotificationsRoute
   '/api/public/upload': typeof ApiPublicUploadRoute
+  '/api/public/upload-url': typeof ApiPublicUploadUrlRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -81,6 +90,7 @@ export interface FileRouteTypes {
     | '/api/public/library'
     | '/api/public/notifications'
     | '/api/public/upload'
+    | '/api/public/upload-url'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -89,6 +99,7 @@ export interface FileRouteTypes {
     | '/api/public/library'
     | '/api/public/notifications'
     | '/api/public/upload'
+    | '/api/public/upload-url'
   id:
     | '__root__'
     | '/'
@@ -97,6 +108,7 @@ export interface FileRouteTypes {
     | '/api/public/library'
     | '/api/public/notifications'
     | '/api/public/upload'
+    | '/api/public/upload-url'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -106,6 +118,7 @@ export interface RootRouteChildren {
   ApiPublicLibraryRoute: typeof ApiPublicLibraryRoute
   ApiPublicNotificationsRoute: typeof ApiPublicNotificationsRoute
   ApiPublicUploadRoute: typeof ApiPublicUploadRoute
+  ApiPublicUploadUrlRoute: typeof ApiPublicUploadUrlRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -152,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicUploadRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/upload-url': {
+      id: '/api/public/upload-url'
+      path: '/api/public/upload-url'
+      fullPath: '/api/public/upload-url'
+      preLoaderRoute: typeof ApiPublicUploadUrlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -162,17 +182,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicLibraryRoute: ApiPublicLibraryRoute,
   ApiPublicNotificationsRoute: ApiPublicNotificationsRoute,
   ApiPublicUploadRoute: ApiPublicUploadRoute,
+  ApiPublicUploadUrlRoute: ApiPublicUploadUrlRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
