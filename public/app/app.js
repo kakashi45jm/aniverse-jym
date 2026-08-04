@@ -1286,9 +1286,11 @@
         else if (targetId.indexOf("sg_url") === 0) { folder = "audio"; }
 
         if (!multi) {
+          var theFile = this.files[0];
           target.value = "";
-          target.placeholder = "Uploading " + this.files[0].name + " ...";
-          uploadFile(this.files[0], folder, function (res, st) {
+          target.placeholder = "Uploading " + theFile.name + " ...";
+          if (targetId.indexOf("sg_url") === 0) { autoSongMeta(theFile); }
+          uploadFile(theFile, folder, function (res, st) {
             if (res && res.url) {
               target.value = res.url;
               target.placeholder = "";
@@ -1298,6 +1300,7 @@
             }
           });
         } else {
+
           var existing = target.value.replace(/^\s+|\s+$/g, "");
           target.value = existing ? existing + "\n" : "";
           target.placeholder = "Uploading " + this.files.length + " files ...";
