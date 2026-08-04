@@ -136,7 +136,6 @@ export const Route = createFileRoute("/api/public/bible")({
 
         // Try bible-api.com first (KJV or WEB)
         const apiTranslation = translation === "kjv" ? "kjv" : "web";
-        let verses: string[] = [];
 
         try {
           const remote = await fetch(
