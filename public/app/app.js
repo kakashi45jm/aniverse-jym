@@ -1251,6 +1251,32 @@
     if (!h) { h = '<li><div class="li tiny muted">Nothing uploaded yet.</div></li>'; }
     return '<div class="panel"><h3>Uploaded</h3><ul class="list">' + h + "</ul></div>";
   }
+
+  /* Reads title / artist / duration straight out of the chosen audio file. */
+  function autoSongMeta(file) {
+    var name = String(file.name || "").replace(/\.[a-z0-9]+$/i, "").replace(/_/g, " ");
+    var parts = name.split(/\s+-\s+/);
+    var guessArtist = "", guessTitle = name;
+    if (parts.length > 1) { guessArtist = parts[0]; guessTitle = parts.slice(1).join(" - "); }
+    if ($("sg_title") && !val("sg_title")) { $("sg_title").value = guessTitle.replace(/^\s+|\s+$/g, ""); }
+    if ($("sg_artist_name") && !val("sg_artist_name") && guessArtist) {
+      $("sg_artist_name").value = guessArtist.replace(/^\s+|\s+$/g, "");
+    }
+    if (!window.URL || !window.URL.createObjectURL) { return; }
+    try {
+      var blobUrl = window.URL.createObjectURL(file);
+      var probe = document.createElement("audio");
+      probe.preload = "metadata";
+      on(probe, "loadedmetadata", function () {
+        if ($("sg_duration") && probe.duration && isFinite(probe.duration)) {
+          $("sg_duration").value = fmtTime(probe.duration);
+        }
+        try { window.URL.revokeObjectURL(blobUrl); } catch (e) { /* ignore */ }
+      });
+      probe.src = blobUrl;
+    } catch (e2) { /* ignore */ }
+  }
+
   function val(id) { var el = $(id); return el ? el.value : ""; }
   function lines(id) {
     var v = val(id).split("\n"), out = [], i;
