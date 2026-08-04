@@ -73,9 +73,9 @@
     });
   }
 
-  function cloudSave(kind, title, payload, cb) {
+  function cloudSave(kind, title, payload, cb, slug) {
     xhrJSON("POST", "/api/public/library",
-      { key: adminKey(), kind: KIND_TO_API[kind], title: title, payload: payload },
+      { key: adminKey(), kind: KIND_TO_API[kind], title: title, payload: payload, slug: slug || undefined },
       function (res, st) {
         if (st === 401) { ADMIN_OK = false; alert("Wrong admin key."); V.admin(); return; }
         if (!res || !res.ok) { alert("Could not upload: " + ((res && res.error) || "no connection")); return; }
@@ -92,34 +92,43 @@
   }
 
   var ADMIN_KEY_CLIENT = (window.VITE_ADMIN_UPLOAD_KEY) || "";
+
+  function setStatus(msg) { var bar = $("upload_status"); if (bar) { bar.innerHTML = msg ? esc(msg) : ""; } }
+
+  /* Uploads the file straight to storage with a signed upload URL, so there is
+     no server body-size limit — big videos (400MB, 1GB+) go through fine. */
   function uploadFile(file, folder, cb) {
-    var fd = new FormData();
-    fd.append("file", file);
-    fd.append("folder", folder || "media");
-    var x;
-    try { x = new XMLHttpRequest(); } catch (e) { cb(null, 0); return; }
-    if (x.upload) {
-      x.upload.onprogress = function (e) {
-        if (e.lengthComputable) {
-          var pct = Math.round((e.loaded / e.total) * 100);
-          var bar = $("upload_status");
-          if (bar) { bar.innerHTML = "Uploading " + file.name + " — " + pct + "%"; }
+    xhrJSON("POST", "/api/public/upload-url",
+      { key: adminKey() || ADMIN_KEY_CLIENT, name: file.name, folder: folder || "media" },
+      function (res, st) {
+        if (!res || !res.uploadUrl) {
+          cb(res || { error: st === 401 ? "Wrong admin key" : "Could not start the upload" }, st || 0);
+          return;
         }
-      };
-    }
-    x.onreadystatechange = function () {
-      if (x.readyState !== 4) { return; }
-      var bar = $("upload_status");
-      if (bar) { bar.innerHTML = ""; }
-      var out = null;
-      try { out = JSON.parse(x.responseText); } catch (e2) { out = null; }
-      cb(out, x.status);
-    };
-    var edgeUrl = (window.VITE_SUPABASE_URL || "") + "/functions/v1/upload-media";
-    x.open("POST", edgeUrl, true);
-    x.setRequestHeader("X-Admin-Key", adminKey() || ADMIN_KEY_CLIENT);
-    x.send(fd);
+        var x;
+        try { x = new XMLHttpRequest(); } catch (e) { cb(null, 0); return; }
+        if (x.upload) {
+          x.upload.onprogress = function (e) {
+            if (e.lengthComputable) {
+              var mb = Math.round(e.total / 1048576);
+              setStatus("Uploading " + file.name + " (" + mb + " MB) \u2014 " +
+                Math.round((e.loaded / e.total) * 100) + "%");
+            }
+          };
+        }
+        x.onreadystatechange = function () {
+          if (x.readyState !== 4) { return; }
+          setStatus("");
+          if (x.status >= 200 && x.status < 300) { cb({ url: res.url, path: res.path }, 200); }
+          else { cb({ error: "Upload failed (" + x.status + "). Check your connection and try again." }, x.status); }
+        };
+        x.open("PUT", res.uploadUrl, true);
+        x.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+        x.setRequestHeader("x-upsert", "true");
+        x.send(file);
+      });
   }
+
 
   function all(kind) { return (CLOUD[kind] || []).concat(db.custom[kind] || []); }
   function byId(kind, id) {
