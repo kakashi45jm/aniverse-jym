@@ -1149,20 +1149,30 @@
     }
 
     if (adminTab === "anime") {
-      h = '<div class="panel"><h3>Add anime</h3>' +
-        field("an_title", "Title") +
+      var anList = all("anime"), anOpts = '<option value="">\u2014 New anime (create) \u2014</option>', ai;
+      for (ai = 0; ai < anList.length; ai++) {
+        anOpts += '<option value="' + esc(anList[ai].id) + '">' + esc(anList[ai].title) +
+          " (" + ((anList[ai].episodes || []).length) + " eps)</option>";
+      }
+      h = '<div class="panel"><h3>Add anime / add episodes</h3>' +
+        '<label>Add episodes to</label><select id="an_existing">' + anOpts + "</select>" +
+        '<p class="tiny muted">Pick an existing title to ADD new episodes to it (Episode 2, 3, 4 \u2026). Leave it on "New anime" to create a new title.</p>' +
+        field("an_title", "Title (only for a new anime)") +
         "<label>Category</label><select id=\"an_category\"><option value=\"anime\">Anime (series)</option><option value=\"movie\">Anime Movie</option></select>" +
         fileBtn("an_cover", "+ Upload cover image", "image/*") +
         '<input type="text" id="an_cover" style="display:none">' +
         field("an_genres", "Genres (comma separated)", "Action, Fantasy") +
         field("an_year", "Year", "2024") + field("an_status", "Status", "Ongoing") +
         area("an_desc", "Description") +
+        field("an_epstart", "Start numbering at episode (leave blank = continue automatically)", "2") +
+        area("an_eptitles", "Episode titles (optional, one per line, matches the links below)", "") +
         area("an_eps", "Episode video links (one per line \u2014 MP4 file, or a YouTube/Vimeo/site link that plays in-app). No limit on episodes.", "") +
-        fileBtn("an_eps", "+ Upload video files", "video/*", true) +
-        '<button type="button" class="btn primary" id="an_save">Save anime</button></div>' +
-        listPanel("anime", all("anime"), function (x) { return x.title + " (" + x.episodes.length + " episodes)"; });
+        fileBtn("an_eps", "+ Upload video files (any size)", "video/*", true) +
+        '<button type="button" class="btn primary" id="an_save">Save</button></div>' +
+        listPanel("anime", all("anime"), function (x) { return x.title + " (" + (x.episodes || []).length + " episodes)"; });
     } else if (adminTab === "manga") {
       h = '<div class="panel"><h3>Add manga</h3>' +
+
         field("mg_title", "Title") + field("mg_author", "Author") + field("mg_artist", "Artist") +
         fileBtn("mg_cover", "+ Upload cover image", "image/*") +
         '<input type="text" id="mg_cover" style="display:none">' +
