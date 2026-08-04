@@ -1354,16 +1354,50 @@
       cloudDelete(id, function () { V.admin(); });
     });
     bindAll("#an_save", function () {
-      var urls = lines("an_eps"), epsArr = [], i;
+      var urls = lines("an_eps"), epTitles = lines("an_eptitles"), i;
       var category = val("an_category") || "anime";
-      for (i = 0; i < urls.length; i++) { epsArr.push({ id: "ep" + (i + 1), number: i + 1, title: "Episode " + (i + 1), duration: "", video: urls[i] }); }
-      if (!val("an_title")) { alert("Title is required."); return; }
-      cloudSave("anime", val("an_title"), {
-        title: val("an_title"), category: category, cover: val("an_cover") || "/app/img/cover.svg",
-        genres: csv("an_genres"), year: val("an_year"), status: val("an_status") || "Ongoing",
-        description: val("an_desc"), episodes: epsArr
-      });
+      var existingId = val("an_existing");
+      var existing = existingId ? byId("anime", existingId) : null;
+      var oldEps = existing && existing.episodes ? existing.episodes.slice(0) : [];
+      var start = parseInt(val("an_epstart"), 10);
+      var highest = 0;
+      for (i = 0; i < oldEps.length; i++) { if ((oldEps[i].number || 0) > highest) { highest = oldEps[i].number; } }
+      if (!start || start < 1) { start = highest + 1; }
+      if (!existing && !val("an_title")) { alert("Title is required for a new anime."); return; }
+      if (!urls.length) { alert("Add at least one episode link, or upload a video file."); return; }
+
+      var newEps = [], num;
+      for (i = 0; i < urls.length; i++) {
+        num = start + i;
+        newEps.push({
+          id: "ep" + num, number: num,
+          title: epTitles[i] ? epTitles[i] : "Episode " + num,
+          duration: "", video: urls[i]
+        });
+      }
+      /* replace any episode that reuses a number, then keep everything sorted */
+      var merged = [], j, clash;
+      for (i = 0; i < oldEps.length; i++) {
+        clash = false;
+        for (j = 0; j < newEps.length; j++) { if (newEps[j].number === oldEps[i].number) { clash = true; } }
+        if (!clash) { merged.push(oldEps[i]); }
+      }
+      merged = merged.concat(newEps);
+      merged.sort(function (a, b) { return (a.number || 0) - (b.number || 0); });
+
+      var title = existing ? existing.title : val("an_title");
+      cloudSave("anime", title, {
+        title: title,
+        category: existing && existing.category ? existing.category : category,
+        cover: val("an_cover") || (existing && existing.cover) || "/app/img/cover.svg",
+        genres: csv("an_genres").length ? csv("an_genres") : ((existing && existing.genres) || []),
+        year: val("an_year") || (existing && existing.year) || "",
+        status: val("an_status") || (existing && existing.status) || "Ongoing",
+        description: val("an_desc") || (existing && existing.description) || "",
+        episodes: merged
+      }, null, existing ? existing.id : null);
     });
+
     bindAll("#mg_save", function () {
       if (!val("mg_title")) { alert("Title is required."); return; }
       var pg = lines("mg_pages");
