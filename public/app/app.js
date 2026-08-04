@@ -295,6 +295,8 @@
   function nextTrack(auto) {
     if (!queue.length) { return; }
     if (repeat && auto) { audio.currentTime = 0; try { audio.play(); } catch (e) { /* ignore */ } return; }
+    if (auto && queue.length === 1) { wantPlaying = false; $("pl-play").innerHTML = "&#9654;"; return; }
+
     if (shuffle) { qIndex = Math.floor(Math.random() * queue.length); }
     else { qIndex = qIndex + 1; }
     /* keep playing continuously: wrap around to the first song instead of stopping */
