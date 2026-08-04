@@ -1445,11 +1445,25 @@
       if (!val("sg_title")) { alert("Song title is required."); return; }
       if (!val("sg_url")) { alert("Add an audio link, or click + Upload to choose an audio file."); return; }
 
-      cloudSave("songs", val("sg_title"), {
-        title: val("sg_title"), artistId: val("sg_artist"), albumId: val("sg_album"),
-        genre: val("sg_genre") || "Other", duration: val("sg_duration"), url: val("sg_url")
-      });
+      var typedArtist = val("sg_artist_name").replace(/^\s+|\s+$/g, "");
+      function finish(artistId) {
+        cloudSave("songs", val("sg_title"), {
+          title: val("sg_title"), artistId: artistId || "", albumId: val("sg_album"),
+          genre: val("sg_genre") || "Other", duration: val("sg_duration"), url: val("sg_url")
+        });
+      }
+      if (typedArtist) {
+        var ars = all("artists"), ai2, found = null;
+        for (ai2 = 0; ai2 < ars.length; ai2++) {
+          if (String(ars[ai2].name).toLowerCase() === typedArtist.toLowerCase()) { found = ars[ai2]; }
+        }
+        if (found) { finish(found.id); return; }
+        cloudSave("artists", typedArtist, { name: typedArtist }, function (slug) { finish(slug); });
+        return;
+      }
+      finish(val("sg_artist"));
     });
+
   }
 
   /* ---------------- router ---------------- */
