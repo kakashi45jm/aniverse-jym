@@ -574,12 +574,13 @@
 
     var direct = isDirectVideo(ep.video);
     if (direct) {
+      /* No poster and no <source> child: old iPad Safari starts much faster when the
+         src is assigned directly, and a poster forces an extra image download first. */
       player =
-        '<video id="vid" controls preload="metadata" playsinline webkit-playsinline poster="' + esc(a.cover) + '">' +
-        '<source src="' + esc(ep.video) + '" type="video/mp4">' +
-        "Your browser cannot play this video." +
-        "</video>" +
-        '<p id="vidmsg" class="muted tiny">MP4 / H.264 / AAC recommended for iOS 9 playback.</p>';
+        '<video id="vid" controls preload="auto" playsinline webkit-playsinline></video>' +
+        '<p id="vidmsg" class="muted tiny">Loading video\u2026</p>' +
+        '<p class="tiny"><a id="vidopen" href="' + esc(ep.video) + '" target="_blank" rel="noopener">' +
+        "Open the video in a new tab (fullscreen)</a></p>";
     } else {
       player =
         '<div class="embedbox"><iframe id="vidframe" src="' + esc(embedUrl(ep.video)) +
@@ -597,8 +598,11 @@
 
     if (direct) {
       var v = $("vid");
-      on(v, "error", function () { $("vidmsg").innerHTML = "This video could not be loaded. Check the video URL in Admin, and make sure it is MP4 (H.264 + AAC)."; });
+      on(v, "error", function () {
+        $("vidmsg").innerHTML = "This video could not be loaded. Make sure the file is MP4 (H.264 video + AAC audio) \u2014 iPad iOS 9 cannot play MKV, HEVC/H.265 or AV1 files.";
+      });
       on(v, "loadedmetadata", function () {
+        $("vidmsg").innerHTML = "Ready \u2014 tap play. MP4 / H.264 / AAC plays best on iOS 9.";
         var p = getProgress("anime", a.id);
         if (p && p.ep === epNum && p.pos > 5 && p.pos < v.duration - 10) {
           try { v.currentTime = p.pos; } catch (e2) { /* ignore */ }
@@ -612,9 +616,20 @@
           setProgress("anime", a.id, { ep: epNum, pos: v.currentTime, pct: v.currentTime / v.duration * 100, ts: now });
         }
       });
+      /* Resolve our proxy link to the real storage link first: one hop less and no
+         302 redirect during byte-range seeking, which iOS 9 Safari mishandles. */
+      resolveMedia(ep.video, function (realUrl) {
+        var vo = $("vidopen");
+        if (vo) { vo.href = realUrl; }
+        try {
+          v.src = realUrl;
+          v.load();
+        } catch (e3) { /* ignore */ }
+      });
     } else {
       setProgress("anime", a.id, { ep: epNum, pos: 0, pct: 0, ts: (new Date()).getTime() });
     }
+
     addHistory("anime", a.id, a.title, "Episode " + epNum, "#/watch/" + a.id + "/" + epNum);
   };
 
