@@ -452,17 +452,27 @@
     }
     out += section("Continue Listening", h || '<p class="muted">No recently played track yet.</p>');
 
-    /* Recently Added */
-    h = "";
-    list = all("anime"); for (i = list.length - 1; i >= 0 && i > list.length - 4; i--) { h += card("#/anime/" + list[i].id, list[i].cover, list[i].title, "Anime"); }
-    list = all("manga"); for (i = list.length - 1; i >= 0 && i > list.length - 3; i--) { h += card("#/manga/" + list[i].id, list[i].cover, list[i].title, "Manga"); }
-    list = all("novels"); for (i = list.length - 1; i >= 0 && i > list.length - 3; i--) { h += card("#/novel/" + list[i].id, list[i].cover, list[i].title, "Novel"); }
-    list = all("songs"); for (i = list.length - 1; i >= 0 && i > list.length - 3; i--) {
+    /* Recently Added — one section per kind */
+    h = ""; list = all("anime");
+    for (i = list.length - 1; i >= 0 && i > list.length - 7; i--) { h += card("#/anime/" + list[i].id, list[i].cover, list[i].title, "Anime"); }
+    out += section("Recently Added \u2014 Anime", h || '<p class="muted">No anime yet.</p>');
+
+    h = ""; list = all("manga");
+    for (i = list.length - 1; i >= 0 && i > list.length - 7; i--) { h += card("#/manga/" + list[i].id, list[i].cover, list[i].title, "Manga"); }
+    out += section("Recently Added \u2014 Manga", h || '<p class="muted">No manga yet.</p>');
+
+    h = ""; list = all("novels");
+    for (i = list.length - 1; i >= 0 && i > list.length - 7; i--) { h += card("#/novel/" + list[i].id, list[i].cover, list[i].title, "Novel"); }
+    out += section("Recently Added \u2014 Novels", h || '<p class="muted">No novels yet.</p>');
+
+    h = ""; list = all("songs");
+    for (i = list.length - 1; i >= 0 && i > list.length - 7; i--) {
       h += '<div class="card"><a href="#" class="playsong" data-i="' + list[i].id + '">' +
         '<div class="thumb"><img src="' + esc(albumCover(list[i].albumId)) + '" alt="Album artwork"></div>' +
         '<div class="cbody"><div class="ctitle">' + esc(list[i].title) + '</div><div class="csub">Song</div></div></a></div>';
     }
-    out += section("Recently Added", h);
+    out += section("Recently Added \u2014 Music", h || '<p class="muted">No songs yet.</p>');
+
 
     /* Favorites */
     h = ""; var k, f, n = 0;
