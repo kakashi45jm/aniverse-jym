@@ -551,6 +551,23 @@
     return /\.(mp4|m4v|mov|webm|ogv|m3u8)$/.test(u);
   }
 
+  /* Our uploads are served through /api/public/file which 302-redirects to a signed
+     storage link. Old Safari (iPad iOS 9) is slow and unreliable following that
+     redirect for media, so resolve the real link once and reuse it. */
+  var mediaCache = {};
+  function resolveMedia(u, cb) {
+    u = String(u || "");
+    if (u.indexOf("/api/public/file") !== 0) { cb(u); return; }
+    if (mediaCache[u]) { cb(mediaCache[u]); return; }
+    xhrJSON("GET", u.replace("/api/public/file?", "/api/public/file?json=1&"), null, function (res) {
+      var real = (res && res.url) ? res.url : u;
+      mediaCache[u] = real;
+      cb(real);
+    });
+  }
+
+
+
   function embedUrl(u) {
     u = String(u || "");
     var m;
