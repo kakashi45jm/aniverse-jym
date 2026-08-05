@@ -259,15 +259,17 @@
     if (n >= queue.length) { n = 0; }
     var s = songById(queue[n]);
     if (!s || !s.url || queue.length < 2) { return; }
-    try {
-      if (!prefetcher) { prefetcher = document.createElement("audio"); prefetcher.volume = 0; }
-      if (prefetcher.getAttribute("data-u") !== s.url) {
-        prefetcher.setAttribute("data-u", s.url);
-        prefetcher.preload = "auto";
-        prefetcher.src = s.url;
-        prefetcher.load();
-      }
-    } catch (e) { /* ignore */ }
+    resolveMedia(s.url, function (realUrl) {
+      try {
+        if (!prefetcher) { prefetcher = document.createElement("audio"); prefetcher.volume = 0; }
+        if (prefetcher.getAttribute("data-u") !== realUrl) {
+          prefetcher.setAttribute("data-u", realUrl);
+          prefetcher.preload = "auto";
+          prefetcher.src = realUrl;
+          prefetcher.load();
+        }
+      } catch (e) { /* ignore */ }
+    });
   }
 
   function playCurrent() {
@@ -278,8 +280,11 @@
     $("pl-sub").innerHTML = esc(artistName(s.artistId) + " \u2014 " + albumTitle(s.albumId));
     $("pl-img").src = albumCover(s.albumId);
     audio.preload = "auto";
-    audio.src = s.url;
+    /* Use the already-resolved storage link when we have it (skips a redirect on iPad),
+       but never wait on the network here or iOS blocks playback outside the tap. */
+    audio.src = mediaCache[s.url] || s.url;
     try { audio.load(); } catch (e0) { /* ignore */ }
+
     audio.volume = db.settings.volume / 100;
     wantPlaying = true;
     try { audio.play(); } catch (e) { /* ignore */ }
@@ -452,17 +457,27 @@
     }
     out += section("Continue Listening", h || '<p class="muted">No recently played track yet.</p>');
 
-    /* Recently Added */
-    h = "";
-    list = all("anime"); for (i = list.length - 1; i >= 0 && i > list.length - 4; i--) { h += card("#/anime/" + list[i].id, list[i].cover, list[i].title, "Anime"); }
-    list = all("manga"); for (i = list.length - 1; i >= 0 && i > list.length - 3; i--) { h += card("#/manga/" + list[i].id, list[i].cover, list[i].title, "Manga"); }
-    list = all("novels"); for (i = list.length - 1; i >= 0 && i > list.length - 3; i--) { h += card("#/novel/" + list[i].id, list[i].cover, list[i].title, "Novel"); }
-    list = all("songs"); for (i = list.length - 1; i >= 0 && i > list.length - 3; i--) {
+    /* Recently Added — one section per kind */
+    h = ""; list = all("anime");
+    for (i = list.length - 1; i >= 0 && i > list.length - 7; i--) { h += card("#/anime/" + list[i].id, list[i].cover, list[i].title, "Anime"); }
+    out += section("Recently Added \u2014 Anime", h || '<p class="muted">No anime yet.</p>');
+
+    h = ""; list = all("manga");
+    for (i = list.length - 1; i >= 0 && i > list.length - 7; i--) { h += card("#/manga/" + list[i].id, list[i].cover, list[i].title, "Manga"); }
+    out += section("Recently Added \u2014 Manga", h || '<p class="muted">No manga yet.</p>');
+
+    h = ""; list = all("novels");
+    for (i = list.length - 1; i >= 0 && i > list.length - 7; i--) { h += card("#/novel/" + list[i].id, list[i].cover, list[i].title, "Novel"); }
+    out += section("Recently Added \u2014 Novels", h || '<p class="muted">No novels yet.</p>');
+
+    h = ""; list = all("songs");
+    for (i = list.length - 1; i >= 0 && i > list.length - 7; i--) {
       h += '<div class="card"><a href="#" class="playsong" data-i="' + list[i].id + '">' +
         '<div class="thumb"><img src="' + esc(albumCover(list[i].albumId)) + '" alt="Album artwork"></div>' +
         '<div class="cbody"><div class="ctitle">' + esc(list[i].title) + '</div><div class="csub">Song</div></div></a></div>';
     }
-    out += section("Recently Added", h);
+    out += section("Recently Added \u2014 Music", h || '<p class="muted">No songs yet.</p>');
+
 
     /* Favorites */
     h = ""; var k, f, n = 0;
@@ -541,6 +556,23 @@
     return /\.(mp4|m4v|mov|webm|ogv|m3u8)$/.test(u);
   }
 
+  /* Our uploads are served through /api/public/file which 302-redirects to a signed
+     storage link. Old Safari (iPad iOS 9) is slow and unreliable following that
+     redirect for media, so resolve the real link once and reuse it. */
+  var mediaCache = {};
+  function resolveMedia(u, cb) {
+    u = String(u || "");
+    if (u.indexOf("/api/public/file") !== 0) { cb(u); return; }
+    if (mediaCache[u]) { cb(mediaCache[u]); return; }
+    xhrJSON("GET", u.replace("/api/public/file?", "/api/public/file?json=1&"), null, function (res) {
+      var real = (res && res.url) ? res.url : u;
+      mediaCache[u] = real;
+      cb(real);
+    });
+  }
+
+
+
   function embedUrl(u) {
     u = String(u || "");
     var m;
@@ -564,12 +596,13 @@
 
     var direct = isDirectVideo(ep.video);
     if (direct) {
+      /* No poster and no <source> child: old iPad Safari starts much faster when the
+         src is assigned directly, and a poster forces an extra image download first. */
       player =
-        '<video id="vid" controls preload="metadata" playsinline webkit-playsinline poster="' + esc(a.cover) + '">' +
-        '<source src="' + esc(ep.video) + '" type="video/mp4">' +
-        "Your browser cannot play this video." +
-        "</video>" +
-        '<p id="vidmsg" class="muted tiny">MP4 / H.264 / AAC recommended for iOS 9 playback.</p>';
+        '<video id="vid" controls preload="auto" playsinline webkit-playsinline></video>' +
+        '<p id="vidmsg" class="muted tiny">Loading video\u2026</p>' +
+        '<p class="tiny"><a id="vidopen" href="' + esc(ep.video) + '" target="_blank" rel="noopener">' +
+        "Open the video in a new tab (fullscreen)</a></p>";
     } else {
       player =
         '<div class="embedbox"><iframe id="vidframe" src="' + esc(embedUrl(ep.video)) +
@@ -587,8 +620,11 @@
 
     if (direct) {
       var v = $("vid");
-      on(v, "error", function () { $("vidmsg").innerHTML = "This video could not be loaded. Check the video URL in Admin, and make sure it is MP4 (H.264 + AAC)."; });
+      on(v, "error", function () {
+        $("vidmsg").innerHTML = "This video could not be loaded. Make sure the file is MP4 (H.264 video + AAC audio) \u2014 iPad iOS 9 cannot play MKV, HEVC/H.265 or AV1 files.";
+      });
       on(v, "loadedmetadata", function () {
+        $("vidmsg").innerHTML = "Ready \u2014 tap play. MP4 / H.264 / AAC plays best on iOS 9.";
         var p = getProgress("anime", a.id);
         if (p && p.ep === epNum && p.pos > 5 && p.pos < v.duration - 10) {
           try { v.currentTime = p.pos; } catch (e2) { /* ignore */ }
@@ -602,9 +638,20 @@
           setProgress("anime", a.id, { ep: epNum, pos: v.currentTime, pct: v.currentTime / v.duration * 100, ts: now });
         }
       });
+      /* Resolve our proxy link to the real storage link first: one hop less and no
+         302 redirect during byte-range seeking, which iOS 9 Safari mishandles. */
+      resolveMedia(ep.video, function (realUrl) {
+        var vo = $("vidopen");
+        if (vo) { vo.href = realUrl; }
+        try {
+          v.src = realUrl;
+          v.load();
+        } catch (e3) { /* ignore */ }
+      });
     } else {
       setProgress("anime", a.id, { ep: epNum, pos: 0, pct: 0, ts: (new Date()).getTime() });
     }
+
     addHistory("anime", a.id, a.title, "Episode " + epNum, "#/watch/" + a.id + "/" + epNum);
   };
 

@@ -12,6 +12,7 @@ export const Route = createFileRoute("/api/public/file")({
       GET: async ({ request }) => {
         const url = new URL(request.url);
         const path = url.searchParams.get("p") ?? "";
+        const wantJson = url.searchParams.get("json") === "1";
 
         if (!path || path.indexOf("..") !== -1) {
           return new Response("Bad path", { status: 400 });
@@ -21,20 +22,38 @@ export const Route = createFileRoute("/api/public/file")({
         const { data, error } = await supabaseAdmin
           .storage
           .from("uploads")
-          .createSignedUrl(path, 60 * 60 * 6);
+          .createSignedUrl(path, 60 * 60 * 12);
 
         if (error || !data?.signedUrl) {
-          return new Response(error?.message ?? "Not found", { status: 404 });
+          const msg = error?.message ?? "Not found";
+          return wantJson
+            ? new Response(JSON.stringify({ error: msg }), {
+                status: 404,
+                headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+              })
+            : new Response(msg, { status: 404 });
+        }
+
+        // Old Safari (iOS 9) handles byte-range requests badly across a 302 hop,
+        // so clients can ask for the signed URL directly and stream from storage.
+        if (wantJson) {
+          return new Response(JSON.stringify({ url: data.signedUrl }), {
+            headers: {
+              "content-type": "application/json; charset=utf-8",
+              "cache-control": "public, max-age=3600",
+            },
+          });
         }
 
         return new Response(null, {
           status: 302,
           headers: {
             location: data.signedUrl,
-            "cache-control": "no-store",
+            "cache-control": "public, max-age=3600",
           },
         });
       },
+
     },
   },
 });
