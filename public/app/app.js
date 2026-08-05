@@ -259,15 +259,17 @@
     if (n >= queue.length) { n = 0; }
     var s = songById(queue[n]);
     if (!s || !s.url || queue.length < 2) { return; }
-    try {
-      if (!prefetcher) { prefetcher = document.createElement("audio"); prefetcher.volume = 0; }
-      if (prefetcher.getAttribute("data-u") !== s.url) {
-        prefetcher.setAttribute("data-u", s.url);
-        prefetcher.preload = "auto";
-        prefetcher.src = s.url;
-        prefetcher.load();
-      }
-    } catch (e) { /* ignore */ }
+    resolveMedia(s.url, function (realUrl) {
+      try {
+        if (!prefetcher) { prefetcher = document.createElement("audio"); prefetcher.volume = 0; }
+        if (prefetcher.getAttribute("data-u") !== realUrl) {
+          prefetcher.setAttribute("data-u", realUrl);
+          prefetcher.preload = "auto";
+          prefetcher.src = realUrl;
+          prefetcher.load();
+        }
+      } catch (e) { /* ignore */ }
+    });
   }
 
   function playCurrent() {
@@ -278,8 +280,11 @@
     $("pl-sub").innerHTML = esc(artistName(s.artistId) + " \u2014 " + albumTitle(s.albumId));
     $("pl-img").src = albumCover(s.albumId);
     audio.preload = "auto";
-    audio.src = s.url;
+    /* Use the already-resolved storage link when we have it (skips a redirect on iPad),
+       but never wait on the network here or iOS blocks playback outside the tap. */
+    audio.src = mediaCache[s.url] || s.url;
     try { audio.load(); } catch (e0) { /* ignore */ }
+
     audio.volume = db.settings.volume / 100;
     wantPlaying = true;
     try { audio.play(); } catch (e) { /* ignore */ }
