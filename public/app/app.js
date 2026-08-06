@@ -1247,15 +1247,6 @@
         field("bb_ch", "Chapter number", "1") +
         area("bb_text", "Tagalog verses (one verse per line)") +
         '<button type="button" class="btn primary" id="bb_save">Save Tagalog chapter</button></div>';
-    } else if (adminTab === "novels") {
-      h = '<div class="panel"><h3>Add novel</h3>' +
-        field("nv_title", "Title") + field("nv_author", "Author") +
-        fileBtn("nv_cover", "+ Upload cover image", "image/*") +
-        '<input type="text" id="nv_cover" style="display:none">' + field("nv_genres", "Genres (comma separated)") +
-        area("nv_desc", "Description") +
-        area("nv_text", "Chapter 1 text") +
-        '<button type="button" class="btn primary" id="nv_save">Save novel</button></div>' +
-        listPanel("novels", all("novels"), function (x) { return x.title + " (" + x.chapters.length + " chapters)"; });
     } else {
       var arOpts = "", ars = all("artists"), alOpts = "", als = all("albums"), q;
       for (q = 0; q < ars.length; q++) { arOpts += '<option value="' + ars[q].id + '">' + esc(ars[q].name) + "</option>"; }
