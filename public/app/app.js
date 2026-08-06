@@ -404,6 +404,23 @@
   /* ---------------- views ---------------- */
   var V = {};
 
+  function heroBanner() {
+    return '<div class="hero">' +
+      '<div class="hero-media">' +
+      '<video id="bannervid" class="hero-vid" src="/app/media/banner-16x9.mp4" poster="/app/media/banner-poster.jpg" ' +
+      'muted autoplay loop playsinline webkit-playsinline preload="metadata"></video>' +
+      '<div class="hero-shade"></div>' +
+      "</div>" +
+      '<div class="hero-body">' +
+      '<img class="hero-pic" src="/app/media/profile.jpg" alt="AniVerse profile picture">' +
+      '<div class="hero-text"><strong>AniVerse Library</strong>' +
+      '<em>Anime \u2022 Music \u2022 Bible</em></div>' +
+      '<div class="hero-cta"><a class="btn sm primary" href="#/anime">Watch anime</a>' +
+      '<a class="btn sm" href="#/music">Play music</a>' +
+      '<a class="btn sm" href="#/bible">Read Bible</a></div>' +
+      "</div></div>";
+  }
+
   V.home = function () {
     var h = "", i, p, a, ep, list, s, pct;
 
@@ -421,26 +438,17 @@
         '<div class="prog"><span style="width:' + Math.round(pct) + '%"></span></div>' +
         '<span class="btn sm primary">Continue</span></div></a></div>';
     }
-    var out = section("Continue Watching", h || '<p class="muted">Nothing yet. Open an anime episode to start.</p>');
+    var out = heroBanner();
+    out += section("Continue Watching", h || '<p class="muted">Nothing yet. Open an anime episode to start.</p>');
 
-    /* Continue Reading: manga + bible + novels */
+    /* Continue Reading: Bible */
     h = "";
-    list = progressList("manga");
-    for (i = 0; i < list.length && i < 4; i++) {
-      a = byId("manga", list[i].id); p = list[i].data;
-      if (a) { h += card("#/manga/" + a.id + "/" + (p.ch || 1) + "/" + (p.page || 1), a.cover, a.title, "Manga \u2014 Ch " + (p.ch || 1) + ", p " + (p.page || 1)); }
-    }
-    list = progressList("novel");
-    for (i = 0; i < list.length && i < 4; i++) {
-      a = byId("novels", list[i].id); p = list[i].data;
-      if (a) { h += card("#/novel/" + a.id + "/" + (p.ch || 1), a.cover, a.title, "Novel \u2014 Chapter " + (p.ch || 1)); }
-    }
     list = progressList("bible");
-    for (i = 0; i < list.length && i < 4; i++) {
+    for (i = 0; i < list.length && i < 6; i++) {
       a = bibleBook(list[i].id); p = list[i].data;
       if (a) { h += card("#/bible/" + a.id + "/" + (p.ch || 1), "/app/img/cover.svg", a.name, "Bible \u2014 Chapter " + (p.ch || 1)); }
     }
-    out += section("Continue Reading", h || '<p class="muted">Nothing yet. Open a manga, novel or Bible chapter.</p>');
+    out += section("Continue Reading", h || '<p class="muted">Nothing yet. Open a Bible chapter.</p>');
 
     /* Continue Listening */
     h = "";
@@ -462,14 +470,6 @@
     for (i = list.length - 1; i >= 0 && i > list.length - 7; i--) { h += card("#/anime/" + list[i].id, list[i].cover, list[i].title, "Anime"); }
     out += section("Recently Added \u2014 Anime", h || '<p class="muted">No anime yet.</p>');
 
-    h = ""; list = all("manga");
-    for (i = list.length - 1; i >= 0 && i > list.length - 7; i--) { h += card("#/manga/" + list[i].id, list[i].cover, list[i].title, "Manga"); }
-    out += section("Recently Added \u2014 Manga", h || '<p class="muted">No manga yet.</p>');
-
-    h = ""; list = all("novels");
-    for (i = list.length - 1; i >= 0 && i > list.length - 7; i--) { h += card("#/novel/" + list[i].id, list[i].cover, list[i].title, "Novel"); }
-    out += section("Recently Added \u2014 Novels", h || '<p class="muted">No novels yet.</p>');
-
     h = ""; list = all("songs");
     for (i = list.length - 1; i >= 0 && i > list.length - 7; i--) {
       h += '<div class="card"><a href="#" class="playsong" data-i="' + list[i].id + '">' +
@@ -489,9 +489,14 @@
     }
     out += section("Favorites", h || '<p class="muted">No favorites yet.</p>', "");
 
-    render(pageWrap("Home", "Anime \u2022 Manga \u2022 Bible \u2022 Novels \u2022 Music", out));
+    render(pageWrap("Home", "Anime \u2022 Music \u2022 Bible", out));
     wirePlaySong();
+    var bv = $("bannervid");
+    if (bv) {
+      try { bv.muted = true; bv.play(); } catch (e0) { /* iOS 9 blocks autoplay; poster shows */ }
+    }
   };
+
 
   function wirePlaySong() {
     bindAll(".playsong", function (e) {
