@@ -1226,18 +1226,6 @@
         fileBtn("an_eps", "+ Upload video files (any size)", "video/*", true) +
         '<button type="button" class="btn primary" id="an_save">Save</button></div>' +
         listPanel("anime", all("anime"), function (x) { return x.title + " (" + (x.episodes || []).length + " episodes)"; });
-    } else if (adminTab === "manga") {
-      h = '<div class="panel"><h3>Add manga</h3>' +
-
-        field("mg_title", "Title") + field("mg_author", "Author") + field("mg_artist", "Artist") +
-        fileBtn("mg_cover", "+ Upload cover image", "image/*") +
-        '<input type="text" id="mg_cover" style="display:none">' +
-        field("mg_genres", "Genres (comma separated)") + field("mg_status", "Status", "Ongoing") +
-        area("mg_desc", "Description") +
-        area("mg_pages", "Chapter 1 page images (upload below)", "") +
-        fileBtn("mg_pages", "+ Upload page images", "image/*", true) +
-        '<button type="button" class="btn primary" id="mg_save">Save manga</button></div>' +
-        listPanel("manga", all("manga"), function (x) { return x.title + " (" + x.chapters.length + " chapters)"; });
     } else if (adminTab === "bible") {
       var bookOptions = "", bb = AV_DATA.bibleBooks, j;
       for (j = 0; j < bb.length; j++) { bookOptions += '<option value="' + bb[j].id + '">' + esc(bb[j].name) + "</option>"; }
