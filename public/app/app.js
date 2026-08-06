@@ -629,7 +629,9 @@
         $("vidmsg").innerHTML = "This video could not be loaded. Make sure the file is MP4 (H.264 video + AAC audio) \u2014 iPad iOS 9 cannot play MKV, HEVC/H.265 or AV1 files.";
       });
       on(v, "loadedmetadata", function () {
-        $("vidmsg").innerHTML = "Ready \u2014 tap play. MP4 / H.264 / AAC plays best on iOS 9.";
+        $("vidmsg").innerHTML = "Starting\u2026 MP4 / H.264 / AAC plays best on iOS 9.";
+        try { v.play(); } catch (e1) { /* ignore */ }
+
         var p = getProgress("anime", a.id);
         if (p && p.ep === epNum && p.pos > 5 && p.pos < v.duration - 10) {
           try { v.currentTime = p.pos; } catch (e2) { /* ignore */ }
