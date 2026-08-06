@@ -404,6 +404,23 @@
   /* ---------------- views ---------------- */
   var V = {};
 
+  function heroBanner() {
+    return '<div class="hero">' +
+      '<div class="hero-media">' +
+      '<video id="bannervid" class="hero-vid" src="/app/media/banner-16x9.mp4" poster="/app/media/banner-poster.jpg" ' +
+      'muted autoplay loop playsinline webkit-playsinline preload="metadata"></video>' +
+      '<div class="hero-shade"></div>' +
+      "</div>" +
+      '<div class="hero-body">' +
+      '<img class="hero-pic" src="/app/media/profile.jpg" alt="AniVerse profile picture">' +
+      '<div class="hero-text"><strong>AniVerse Library</strong>' +
+      '<em>Anime \u2022 Music \u2022 Bible</em></div>' +
+      '<div class="hero-cta"><a class="btn sm primary" href="#/anime">Watch anime</a>' +
+      '<a class="btn sm" href="#/music">Play music</a>' +
+      '<a class="btn sm" href="#/bible">Read Bible</a></div>' +
+      "</div></div>";
+  }
+
   V.home = function () {
     var h = "", i, p, a, ep, list, s, pct;
 
@@ -421,26 +438,17 @@
         '<div class="prog"><span style="width:' + Math.round(pct) + '%"></span></div>' +
         '<span class="btn sm primary">Continue</span></div></a></div>';
     }
-    var out = section("Continue Watching", h || '<p class="muted">Nothing yet. Open an anime episode to start.</p>');
+    var out = heroBanner();
+    out += section("Continue Watching", h || '<p class="muted">Nothing yet. Open an anime episode to start.</p>');
 
-    /* Continue Reading: manga + bible + novels */
+    /* Continue Reading: Bible */
     h = "";
-    list = progressList("manga");
-    for (i = 0; i < list.length && i < 4; i++) {
-      a = byId("manga", list[i].id); p = list[i].data;
-      if (a) { h += card("#/manga/" + a.id + "/" + (p.ch || 1) + "/" + (p.page || 1), a.cover, a.title, "Manga \u2014 Ch " + (p.ch || 1) + ", p " + (p.page || 1)); }
-    }
-    list = progressList("novel");
-    for (i = 0; i < list.length && i < 4; i++) {
-      a = byId("novels", list[i].id); p = list[i].data;
-      if (a) { h += card("#/novel/" + a.id + "/" + (p.ch || 1), a.cover, a.title, "Novel \u2014 Chapter " + (p.ch || 1)); }
-    }
     list = progressList("bible");
-    for (i = 0; i < list.length && i < 4; i++) {
+    for (i = 0; i < list.length && i < 6; i++) {
       a = bibleBook(list[i].id); p = list[i].data;
       if (a) { h += card("#/bible/" + a.id + "/" + (p.ch || 1), "/app/img/cover.svg", a.name, "Bible \u2014 Chapter " + (p.ch || 1)); }
     }
-    out += section("Continue Reading", h || '<p class="muted">Nothing yet. Open a manga, novel or Bible chapter.</p>');
+    out += section("Continue Reading", h || '<p class="muted">Nothing yet. Open a Bible chapter.</p>');
 
     /* Continue Listening */
     h = "";
@@ -462,14 +470,6 @@
     for (i = list.length - 1; i >= 0 && i > list.length - 7; i--) { h += card("#/anime/" + list[i].id, list[i].cover, list[i].title, "Anime"); }
     out += section("Recently Added \u2014 Anime", h || '<p class="muted">No anime yet.</p>');
 
-    h = ""; list = all("manga");
-    for (i = list.length - 1; i >= 0 && i > list.length - 7; i--) { h += card("#/manga/" + list[i].id, list[i].cover, list[i].title, "Manga"); }
-    out += section("Recently Added \u2014 Manga", h || '<p class="muted">No manga yet.</p>');
-
-    h = ""; list = all("novels");
-    for (i = list.length - 1; i >= 0 && i > list.length - 7; i--) { h += card("#/novel/" + list[i].id, list[i].cover, list[i].title, "Novel"); }
-    out += section("Recently Added \u2014 Novels", h || '<p class="muted">No novels yet.</p>');
-
     h = ""; list = all("songs");
     for (i = list.length - 1; i >= 0 && i > list.length - 7; i--) {
       h += '<div class="card"><a href="#" class="playsong" data-i="' + list[i].id + '">' +
@@ -489,9 +489,14 @@
     }
     out += section("Favorites", h || '<p class="muted">No favorites yet.</p>', "");
 
-    render(pageWrap("Home", "Anime \u2022 Manga \u2022 Bible \u2022 Novels \u2022 Music", out));
+    render(pageWrap("Home", "Anime \u2022 Music \u2022 Bible", out));
     wirePlaySong();
+    var bv = $("bannervid");
+    if (bv) {
+      try { bv.muted = true; bv.play(); } catch (e0) { /* iOS 9 blocks autoplay; poster shows */ }
+    }
   };
+
 
   function wirePlaySong() {
     bindAll(".playsong", function (e) {
@@ -599,7 +604,7 @@
       /* No poster and no <source> child: old iPad Safari starts much faster when the
          src is assigned directly, and a poster forces an extra image download first. */
       player =
-        '<video id="vid" controls preload="auto" playsinline webkit-playsinline></video>' +
+        '<video id="vid" controls autoplay preload="auto" playsinline webkit-playsinline></video>' +
         '<p id="vidmsg" class="muted tiny">Loading video\u2026</p>' +
         '<p class="tiny"><a id="vidopen" href="' + esc(ep.video) + '" target="_blank" rel="noopener">' +
         "Open the video in a new tab (fullscreen)</a></p>";
@@ -624,7 +629,9 @@
         $("vidmsg").innerHTML = "This video could not be loaded. Make sure the file is MP4 (H.264 video + AAC audio) \u2014 iPad iOS 9 cannot play MKV, HEVC/H.265 or AV1 files.";
       });
       on(v, "loadedmetadata", function () {
-        $("vidmsg").innerHTML = "Ready \u2014 tap play. MP4 / H.264 / AAC plays best on iOS 9.";
+        $("vidmsg").innerHTML = "Starting\u2026 MP4 / H.264 / AAC plays best on iOS 9.";
+        try { v.play(); } catch (e1) { /* ignore */ }
+
         var p = getProgress("anime", a.id);
         if (p && p.ep === epNum && p.pos > 5 && p.pos < v.duration - 10) {
           try { v.currentTime = p.pos; } catch (e2) { /* ignore */ }
@@ -646,7 +653,9 @@
         try {
           v.src = realUrl;
           v.load();
+          v.play();
         } catch (e3) { /* ignore */ }
+
       });
     } else {
       setProgress("anime", a.id, { ep: epNum, pos: 0, pct: 0, ts: (new Date()).getTime() });
@@ -1057,7 +1066,7 @@
   var lastQuery = "";
   V.search = function (q) {
     q = q || lastQuery || "";
-    render(pageWrap("Search", "Anime, manga, Bible books, novels and music",
+    render(pageWrap("Search", "Anime, Bible books and music",
       '<div class="panel"><input type="text" id="q" placeholder="Type a title, author, artist or Bible book" value="' + esc(q) + '">' +
       '<button type="button" class="btn primary" id="gosearch">Search</button></div><div id="results"></div>'));
 
@@ -1066,8 +1075,6 @@
       lastQuery = $("q").value;
       if (!term) { $("results").innerHTML = '<p class="muted">Enter a search term.</p>'; return; }
       out += group("Anime", all("anime"), function (x) { return x.title + " " + (x.genres || []).join(" ") + " " + x.description; }, function (x) { return "#/anime/" + x.id; }, function (x) { return x.title; });
-      out += group("Manga", all("manga"), function (x) { return x.title + " " + x.author + " " + x.description; }, function (x) { return "#/manga/" + x.id; }, function (x) { return x.title; });
-      out += group("Novels", all("novels"), function (x) { return x.title + " " + x.author + " " + x.description; }, function (x) { return "#/novel/" + x.id; }, function (x) { return x.title; });
       out += group("Bible books", AV_DATA.bibleBooks, function (x) { return x.name; }, function (x) { return "#/bible/" + x.id + "/1"; }, function (x) { return x.name; });
       out += group("Songs", all("songs"), function (x) { return x.title + " " + artistName(x.artistId) + " " + albumTitle(x.albumId) + " " + (x.genre || ""); }, function () { return "#/music"; }, function (x) { return x.title + " \u2014 " + artistName(x.artistId); });
       out += group("Albums", all("albums"), function (x) { return x.title + " " + artistName(x.artistId); }, function (x) { return "#/album/" + x.id; }, function (x) { return x.title; });
@@ -1092,7 +1099,7 @@
 
   var favFilter = "all";
   V.favorites = function () {
-    var types = ["all", "anime", "manga", "novel", "verse", "bible", "song", "album"], i, bar = "", h = "", k, f;
+    var types = ["all", "anime", "verse", "bible", "song", "album"], i, bar = "", h = "", k, f;
     for (i = 0; i < types.length; i++) {
       bar += '<button type="button" class="btn sm ffilter' + (types[i] === favFilter ? " on" : "") +
         '" data-f="' + types[i] + '">' + types[i] + "</button>";
@@ -1138,7 +1145,7 @@
       '<div class="panel"><h3>Data</h3><p class="muted tiny">Favorites, history, progress and playlists are stored in this browser only. ' +
       "No account and no server tracking are required.</p>" +
       '<button type="button" class="btn" id="wipe">Reset all local data</button></div>' +
-      '<div class="panel"><h3>Notifications</h3><p class="muted tiny">Get an alert on this phone or tablet whenever new anime, manga, novels or music are uploaded.</p>' +
+      '<div class="panel"><h3>Notifications</h3><p class="muted tiny">Get an alert on this phone or tablet whenever new anime or music are uploaded.</p>' +
       '<button type="button" class="btn" id="nperm">Turn on notifications</button>' +
       '<p class="tiny muted">In-app banners always work. System pop-ups need a browser that supports web notifications (Chrome, Edge, Firefox, or Safari 16+).</p></div>' +
       '<div class="panel"><h3>Compatibility</h3><p class="tiny muted">This interface is built with ES5 JavaScript, CSS3 and native HTML5 ' +
@@ -1190,7 +1197,7 @@
   V.admin = function (tab) {
     if (tab) { adminTab = tab; }
     if (!ADMIN_OK) { return adminLock(); }
-    var tabs = ["anime", "manga", "bible", "novels", "music"], i, bar = "", h = "";
+    var tabs = ["anime", "bible", "music"], i, bar = "", h = "";
     for (i = 0; i < tabs.length; i++) {
       bar += '<a class="btn sm' + (tabs[i] === adminTab ? " on" : "") + '" href="#/admin/' + tabs[i] + '">' + tabs[i] + "</a>";
     }
@@ -1217,18 +1224,6 @@
         fileBtn("an_eps", "+ Upload video files (any size)", "video/*", true) +
         '<button type="button" class="btn primary" id="an_save">Save</button></div>' +
         listPanel("anime", all("anime"), function (x) { return x.title + " (" + (x.episodes || []).length + " episodes)"; });
-    } else if (adminTab === "manga") {
-      h = '<div class="panel"><h3>Add manga</h3>' +
-
-        field("mg_title", "Title") + field("mg_author", "Author") + field("mg_artist", "Artist") +
-        fileBtn("mg_cover", "+ Upload cover image", "image/*") +
-        '<input type="text" id="mg_cover" style="display:none">' +
-        field("mg_genres", "Genres (comma separated)") + field("mg_status", "Status", "Ongoing") +
-        area("mg_desc", "Description") +
-        area("mg_pages", "Chapter 1 page images (upload below)", "") +
-        fileBtn("mg_pages", "+ Upload page images", "image/*", true) +
-        '<button type="button" class="btn primary" id="mg_save">Save manga</button></div>' +
-        listPanel("manga", all("manga"), function (x) { return x.title + " (" + x.chapters.length + " chapters)"; });
     } else if (adminTab === "bible") {
       var bookOptions = "", bb = AV_DATA.bibleBooks, j;
       for (j = 0; j < bb.length; j++) { bookOptions += '<option value="' + bb[j].id + '">' + esc(bb[j].name) + "</option>"; }
@@ -1238,15 +1233,6 @@
         field("bb_ch", "Chapter number", "1") +
         area("bb_text", "Tagalog verses (one verse per line)") +
         '<button type="button" class="btn primary" id="bb_save">Save Tagalog chapter</button></div>';
-    } else if (adminTab === "novels") {
-      h = '<div class="panel"><h3>Add novel</h3>' +
-        field("nv_title", "Title") + field("nv_author", "Author") +
-        fileBtn("nv_cover", "+ Upload cover image", "image/*") +
-        '<input type="text" id="nv_cover" style="display:none">' + field("nv_genres", "Genres (comma separated)") +
-        area("nv_desc", "Description") +
-        area("nv_text", "Chapter 1 text") +
-        '<button type="button" class="btn primary" id="nv_save">Save novel</button></div>' +
-        listPanel("novels", all("novels"), function (x) { return x.title + " (" + x.chapters.length + " chapters)"; });
     } else {
       var arOpts = "", ars = all("artists"), alOpts = "", als = all("albums"), q;
       for (q = 0; q < ars.length; q++) { arOpts += '<option value="' + ars[q].id + '">' + esc(ars[q].name) + "</option>"; }
@@ -1273,9 +1259,17 @@
 
     }
 
+    var about = '<div class="panel about">' +
+      '<img class="about-pic" src="/app/media/profile.jpg" alt="Developer picture">' +
+      "<h3>About</h3>" +
+      '<p class="tiny">AniVerse Library \u2014 a lightweight Anime, Music and Bible library built to run on iPad mini 2 (iOS 9.3.5 Safari) and modern browsers.</p>' +
+      '<p class="tiny"><strong>Developer:</strong> JM Cruz</p>' +
+      '<p class="tiny muted">ES5 JavaScript \u2022 CSS3 Flexbox \u2022 native HTML5 video &amp; audio</p></div>';
+
     render(pageWrap("Admin", "Uploads are saved in the cloud \u2014 everyone sees them, and every device gets a notification",
       '<div class="bar">' + bar + '<button type="button" class="btn sm" id="ak_lock">Lock admin</button></div>' +
-      '<div id="upload_status" class="upload-status"></div>' + h));
+      '<div id="upload_status" class="upload-status"></div>' + h + about));
+
     wireAdmin();
   };
 
@@ -1601,8 +1595,8 @@
   function setFab(p0) {
     var fab = $("fab");
     if (!fab) { return; }
-    var map = { anime: "anime", manga: "manga", novels: "novels", novel: "novels",
-      music: "music", album: "music", artist: "music", bible: "bible" };
+    var map = { anime: "anime", music: "music", album: "music", artist: "music", bible: "bible" };
+
     fab.href = "#/admin/" + (map[p0] || "anime");
   }
 
