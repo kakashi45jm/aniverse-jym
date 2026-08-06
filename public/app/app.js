@@ -604,7 +604,7 @@
       /* No poster and no <source> child: old iPad Safari starts much faster when the
          src is assigned directly, and a poster forces an extra image download first. */
       player =
-        '<video id="vid" controls preload="auto" playsinline webkit-playsinline></video>' +
+        '<video id="vid" controls autoplay preload="auto" playsinline webkit-playsinline></video>' +
         '<p id="vidmsg" class="muted tiny">Loading video\u2026</p>' +
         '<p class="tiny"><a id="vidopen" href="' + esc(ep.video) + '" target="_blank" rel="noopener">' +
         "Open the video in a new tab (fullscreen)</a></p>";
