@@ -1066,7 +1066,7 @@
   var lastQuery = "";
   V.search = function (q) {
     q = q || lastQuery || "";
-    render(pageWrap("Search", "Anime, manga, Bible books, novels and music",
+    render(pageWrap("Search", "Anime, Bible books and music",
       '<div class="panel"><input type="text" id="q" placeholder="Type a title, author, artist or Bible book" value="' + esc(q) + '">' +
       '<button type="button" class="btn primary" id="gosearch">Search</button></div><div id="results"></div>'));
 
@@ -1075,8 +1075,6 @@
       lastQuery = $("q").value;
       if (!term) { $("results").innerHTML = '<p class="muted">Enter a search term.</p>'; return; }
       out += group("Anime", all("anime"), function (x) { return x.title + " " + (x.genres || []).join(" ") + " " + x.description; }, function (x) { return "#/anime/" + x.id; }, function (x) { return x.title; });
-      out += group("Manga", all("manga"), function (x) { return x.title + " " + x.author + " " + x.description; }, function (x) { return "#/manga/" + x.id; }, function (x) { return x.title; });
-      out += group("Novels", all("novels"), function (x) { return x.title + " " + x.author + " " + x.description; }, function (x) { return "#/novel/" + x.id; }, function (x) { return x.title; });
       out += group("Bible books", AV_DATA.bibleBooks, function (x) { return x.name; }, function (x) { return "#/bible/" + x.id + "/1"; }, function (x) { return x.name; });
       out += group("Songs", all("songs"), function (x) { return x.title + " " + artistName(x.artistId) + " " + albumTitle(x.albumId) + " " + (x.genre || ""); }, function () { return "#/music"; }, function (x) { return x.title + " \u2014 " + artistName(x.artistId); });
       out += group("Albums", all("albums"), function (x) { return x.title + " " + artistName(x.artistId); }, function (x) { return "#/album/" + x.id; }, function (x) { return x.title; });
@@ -1101,7 +1099,7 @@
 
   var favFilter = "all";
   V.favorites = function () {
-    var types = ["all", "anime", "manga", "novel", "verse", "bible", "song", "album"], i, bar = "", h = "", k, f;
+    var types = ["all", "anime", "verse", "bible", "song", "album"], i, bar = "", h = "", k, f;
     for (i = 0; i < types.length; i++) {
       bar += '<button type="button" class="btn sm ffilter' + (types[i] === favFilter ? " on" : "") +
         '" data-f="' + types[i] + '">' + types[i] + "</button>";
@@ -1147,7 +1145,7 @@
       '<div class="panel"><h3>Data</h3><p class="muted tiny">Favorites, history, progress and playlists are stored in this browser only. ' +
       "No account and no server tracking are required.</p>" +
       '<button type="button" class="btn" id="wipe">Reset all local data</button></div>' +
-      '<div class="panel"><h3>Notifications</h3><p class="muted tiny">Get an alert on this phone or tablet whenever new anime, manga, novels or music are uploaded.</p>' +
+      '<div class="panel"><h3>Notifications</h3><p class="muted tiny">Get an alert on this phone or tablet whenever new anime or music are uploaded.</p>' +
       '<button type="button" class="btn" id="nperm">Turn on notifications</button>' +
       '<p class="tiny muted">In-app banners always work. System pop-ups need a browser that supports web notifications (Chrome, Edge, Firefox, or Safari 16+).</p></div>' +
       '<div class="panel"><h3>Compatibility</h3><p class="tiny muted">This interface is built with ES5 JavaScript, CSS3 and native HTML5 ' +
@@ -1199,7 +1197,7 @@
   V.admin = function (tab) {
     if (tab) { adminTab = tab; }
     if (!ADMIN_OK) { return adminLock(); }
-    var tabs = ["anime", "manga", "bible", "novels", "music"], i, bar = "", h = "";
+    var tabs = ["anime", "bible", "music"], i, bar = "", h = "";
     for (i = 0; i < tabs.length; i++) {
       bar += '<a class="btn sm' + (tabs[i] === adminTab ? " on" : "") + '" href="#/admin/' + tabs[i] + '">' + tabs[i] + "</a>";
     }
