@@ -653,7 +653,9 @@
         try {
           v.src = realUrl;
           v.load();
+          v.play();
         } catch (e3) { /* ignore */ }
+
       });
     } else {
       setProgress("anime", a.id, { ep: epNum, pos: 0, pct: 0, ts: (new Date()).getTime() });
