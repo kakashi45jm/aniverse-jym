@@ -1601,8 +1601,8 @@
   function setFab(p0) {
     var fab = $("fab");
     if (!fab) { return; }
-    var map = { anime: "anime", manga: "manga", novels: "novels", novel: "novels",
-      music: "music", album: "music", artist: "music", bible: "bible" };
+    var map = { anime: "anime", music: "music", album: "music", artist: "music", bible: "bible" };
+
     fab.href = "#/admin/" + (map[p0] || "anime");
   }
 
