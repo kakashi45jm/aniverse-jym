@@ -1261,9 +1261,17 @@
 
     }
 
+    var about = '<div class="panel about">' +
+      '<img class="about-pic" src="/app/media/profile.jpg" alt="Developer picture">' +
+      "<h3>About</h3>" +
+      '<p class="tiny">AniVerse Library \u2014 a lightweight Anime, Music and Bible library built to run on iPad mini 2 (iOS 9.3.5 Safari) and modern browsers.</p>' +
+      '<p class="tiny"><strong>Developer:</strong> JM Cruz</p>' +
+      '<p class="tiny muted">ES5 JavaScript \u2022 CSS3 Flexbox \u2022 native HTML5 video &amp; audio</p></div>';
+
     render(pageWrap("Admin", "Uploads are saved in the cloud \u2014 everyone sees them, and every device gets a notification",
       '<div class="bar">' + bar + '<button type="button" class="btn sm" id="ak_lock">Lock admin</button></div>' +
-      '<div id="upload_status" class="upload-status"></div>' + h));
+      '<div id="upload_status" class="upload-status"></div>' + h + about));
+
     wireAdmin();
   };
 
